@@ -1,0 +1,40 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.userprefs
+
+# Rider / JetBrains
+.idea/
+*.sln.iml
+
+# NuGet
+*.nupkg
+**/packages/*
+!**/packages/build/
+
+# Publish / packaging output
+**/[Pp]ublish/
+*.publishsettings
+
+# OS cruft
+.DS_Store
+Thumbs.db
+
+# Local logs / crash dumps
+*.log
+*.dmp
+
+# User-loaded save files — never commit someone's actual game save
+*.dat
+!Assets/**/*.dat
