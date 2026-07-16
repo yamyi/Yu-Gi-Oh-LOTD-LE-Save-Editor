@@ -1,0 +1,21 @@
+<Application x:Class="YuGiOhDeckManager.Wpf.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             StartupUri="MainWindow.xaml">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!-- The app's one fixed palette/brush set (no user-editable
+                     Theme Editor) plus the shared control styles built on top
+                     of it. Order matters: MasterDuelTheme defines the brushes
+                     Controls.xaml's styles reference. Traced from Yu-Gi-Oh!
+                     Master Duel's UI (not Duel Links - see MasterDuelTheme.xaml's
+                     own comment for why). DuelLinksTheme.xaml is left in the
+                     project, unreferenced, in case any of that look is wanted
+                     again later. -->
+                <ResourceDictionary Source="Themes/MasterDuelTheme.xaml" />
+                <ResourceDictionary Source="Themes/Controls.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

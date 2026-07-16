@@ -93,6 +93,18 @@ public sealed class Theme
         return clone;
     }
 
+    /// <summary>
+    /// The app's one fixed palette — a "Yu-Gi-Oh! Duel Links" mobile-UI look:
+    /// deep navy backgrounds, bright cyan borders/dividers, a teal gradient for
+    /// primary CTA buttons (matches Duel Links' "Card Inventory"/"Information"
+    /// buttons), a blue gradient for secondary buttons ("MENU"/"Auto-Build
+    /// Deck"/"Copy Deck"), gold for callouts and active-tab state, and red for
+    /// warnings — all traced from actual Duel Links screenshots (deck editor,
+    /// deck list, Duel Studio menu, main hub, Settings modal, Help/Etc. list).
+    /// Kept under the name "Dark" / IsBuiltIn so ThemeManager's existing
+    /// load/persist/property-role plumbing didn't need touching — this app
+    /// now only ships the one look (see MainForm's removed theme switcher).
+    /// </summary>
     [JsonIgnore]
     public static Theme Dark => new()
     {
@@ -100,61 +112,67 @@ public sealed class Theme
         IsBuiltIn = true,
         IsDark = true,
 
-        // Backgrounds step up in clear, visible increments (base -> chrome ->
-        // card -> hover -> selected) instead of near-identical near-black
-        // tones — that flatness was the root of "hard to read, not uniform".
-        AppBg = Color.FromArgb(13, 13, 22),
-        SidebarBg = Color.FromArgb(22, 22, 34),
-        CardBg = Color.FromArgb(28, 28, 42),
-        CardHover = Color.FromArgb(40, 40, 60),
-        CardSelected = Color.FromArgb(48, 46, 76),
-        TopbarBg = Color.FromArgb(22, 22, 34),
-        InputBg = Color.FromArgb(24, 24, 36),
-        ActionBtnBg = Color.FromArgb(18, 18, 28),
+        // Backgrounds: near-black navy canvas -> navy chrome (top/bottom bars)
+        // -> navy panel (info boxes, cards) -> lighter navy hover -> cyan-
+        // tinted selected, matching the deck-editor's info-panel/slot styling.
+        AppBg = Color.FromArgb(7, 12, 22),
+        SidebarBg = Color.FromArgb(9, 18, 32),
+        CardBg = Color.FromArgb(13, 28, 50),
+        CardHover = Color.FromArgb(19, 40, 70),
+        CardSelected = Color.FromArgb(22, 56, 88),
+        TopbarBg = Color.FromArgb(7, 11, 20),
+        InputBg = Color.FromArgb(11, 24, 44),
+        ActionBtnBg = Color.FromArgb(14, 52, 98),
 
-        Border = Color.FromArgb(60, 60, 86),
-        BorderHover = Color.FromArgb(96, 96, 160),
-        BorderSelected = Color.FromArgb(216, 178, 60),
+        // Borders: the bright cyan outline used on every panel/slot/divider.
+        Border = Color.FromArgb(42, 188, 220),
+        BorderHover = Color.FromArgb(108, 228, 250),
+        BorderSelected = Color.FromArgb(247, 199, 64),
 
-        TextPrimary = Color.FromArgb(238, 238, 250),
-        TextSecondary = Color.FromArgb(190, 190, 212),
-        TextMuted = Color.FromArgb(138, 138, 164),
-        TextDim = Color.FromArgb(92, 92, 116),
-        TextGold = Color.FromArgb(220, 184, 84),
-        TextNavActive = Color.FromArgb(220, 184, 84),
-        TextNav = Color.FromArgb(146, 146, 172),
-        TextInfo = Color.FromArgb(158, 158, 196),
-        TextCardName = Color.FromArgb(232, 216, 178),
-        TextDescription = Color.FromArgb(198, 192, 176),
+        TextPrimary = Color.FromArgb(240, 246, 250),
+        TextSecondary = Color.FromArgb(178, 206, 224),
+        TextMuted = Color.FromArgb(116, 146, 176),
+        TextDim = Color.FromArgb(78, 100, 130),
+        TextGold = Color.FromArgb(250, 202, 60),
+        TextNavActive = Color.FromArgb(250, 202, 60),
+        TextNav = Color.FromArgb(140, 190, 214),
+        TextInfo = Color.FromArgb(118, 200, 230),
+        TextCardName = Color.FromArgb(235, 214, 168),
+        TextDescription = Color.FromArgb(200, 214, 226),
 
-        MainGreen = Color.FromArgb(112, 202, 112),
-        ExtraBlue = Color.FromArgb(124, 132, 232),
-        SideRed = Color.FromArgb(224, 104, 104),
-        MainBg = Color.FromArgb(18, 38, 18),
-        MainBorder = Color.FromArgb(46, 92, 46),
-        ExtraBg = Color.FromArgb(20, 20, 46),
-        ExtraBorder = Color.FromArgb(48, 48, 104),
-        SideBg = Color.FromArgb(40, 20, 20),
-        SideBorder = Color.FromArgb(92, 46, 46),
-        StatAtk = Color.FromArgb(228, 106, 106),
-        StatDef = Color.FromArgb(104, 170, 232),
-        StatMuted = Color.FromArgb(196, 170, 100),
-        StatusOk = Color.FromArgb(96, 196, 96),
+        // Main = cyan, Extra = magenta, Side = red — matches the Main/Extra
+        // deck slot border colors in the Duel Links deck editor screenshot.
+        MainGreen = Color.FromArgb(70, 210, 235),
+        ExtraBlue = Color.FromArgb(224, 90, 190),
+        SideRed = Color.FromArgb(230, 110, 110),
+        MainBg = Color.FromArgb(9, 32, 46),
+        MainBorder = Color.FromArgb(50, 195, 225),
+        ExtraBg = Color.FromArgb(36, 12, 34),
+        ExtraBorder = Color.FromArgb(210, 70, 170),
+        SideBg = Color.FromArgb(40, 14, 14),
+        SideBorder = Color.FromArgb(200, 80, 80),
+        StatAtk = Color.FromArgb(235, 120, 90),
+        StatDef = Color.FromArgb(110, 180, 235),
+        StatMuted = Color.FromArgb(190, 175, 120),
+        StatusOk = Color.FromArgb(90, 210, 120),
 
-        GoldBtnBg = Color.FromArgb(216, 178, 60),
-        GoldBtnFg = Color.FromArgb(18, 18, 28),
-        GoldBtnHover = Color.FromArgb(236, 202, 96),
-        ButtonNeutralBg = Color.FromArgb(42, 42, 52),
-        ButtonNeutralHover = Color.FromArgb(58, 58, 70),
-        DangerFg = Color.FromArgb(230, 118, 118),
-        DangerBorder = Color.FromArgb(98, 54, 54),
-        DangerHoverBg = Color.FromArgb(56, 28, 28),
-        AccentRedHover = Color.FromArgb(206, 68, 68),
+        // "Gold" button role repurposed as the teal primary-CTA color (Duel
+        // Links reserves actual gold for small accents/active tabs, not
+        // buttons — its primary action buttons are teal/cyan).
+        GoldBtnBg = Color.FromArgb(18, 150, 165),
+        GoldBtnFg = Color.FromArgb(8, 20, 30),
+        GoldBtnHover = Color.FromArgb(40, 185, 200),
+        ButtonNeutralBg = Color.FromArgb(18, 70, 130),
+        ButtonNeutralHover = Color.FromArgb(28, 95, 165),
+        DangerFg = Color.FromArgb(235, 120, 120),
+        DangerBorder = Color.FromArgb(150, 60, 60),
+        DangerHoverBg = Color.FromArgb(58, 20, 20),
+        AccentRedHover = Color.FromArgb(220, 80, 80),
 
-        OverlayBackdrop = Color.FromArgb(6, 6, 10),
-        PortraitBg = Color.FromArgb(17, 17, 28),
-        AccentDivider = Color.FromArgb(70, 46, 112),
-        OfflinePanelBg = Color.FromArgb(34, 34, 50),
+        OverlayBackdrop = Color.FromArgb(4, 8, 14),
+        PortraitBg = Color.FromArgb(10, 22, 40),
+        AccentDivider = Color.FromArgb(40, 130, 160),
+        OfflinePanelBg = Color.FromArgb(15, 33, 57),
     };
 
     [JsonIgnore]

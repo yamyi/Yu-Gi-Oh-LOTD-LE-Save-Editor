@@ -1,4 +1,5 @@
 
+using Yu_Gi_Oh_LOTD_LE_Deck_Manager.Controls;
 using Yu_Gi_Oh_LOTD_LE_Deck_Manager.Properties;
 using Yu_Gi_Oh_LOTD_LE_Deck_Manager.Services;
 using static Yu_Gi_Oh_LOTD_LE_Deck_Manager.Services.SlotIO;
@@ -13,33 +14,15 @@ public partial class MainForm : Form
     private byte[]? _originalSaveBytes;
     private bool _isDirty;
 
-    // ── Sidebar / drawer state (formerly SidebarPanel UserControl) ─────────────
-    // Expanded = 200 px (icon + label). Collapsed = 48 px (icon only, with tooltips).
-    // Icon + label are fused into a single Button per nav row (no separate icon
-    // Label sitting on top of it), so the entire row stays clickable in both states.
-    private const int SidebarExpandedWidth = 200;
-    private const int SidebarCollapsedWidth = 48;
-    private const int SidebarAnimationIntervalMs = 12;
-    private const int SidebarAnimationDurationMs = 160;
-
-    // Gap between the icon glyph and the label when expanded. Tune to taste —
-    // exact pixel alignment depends on ReaLTaiizor's text metrics.
-    private const string SidebarIconLabelGap = "    ";
-
-    // Icon-only collapsed rows have room to breathe, so the glyph gets its own
-    // larger font instead of reusing the small label font size.
-    private static readonly Font SidebarExpandedNavFont = new("Segoe UI", 12F);
-    private static readonly Font SidebarCollapsedNavFont = new("Segoe UI", 16F);
-
-    private bool _sidebarCollapsed;
-    private ReaLTaiizor.Controls.Button? _activeNavBtn;
-
-    private readonly System.Windows.Forms.Timer _sidebarAnimTimer = new() { Interval = SidebarAnimationIntervalMs };
-    private readonly ToolTip _sidebarCollapsedTips = new();
-    private readonly Dictionary<ReaLTaiizor.Controls.Button, (string Icon, string Label)> _navItems = new();
-    private int _sidebarAnimStartWidth;
-    private int _sidebarAnimTargetWidth;
-    private DateTime _sidebarAnimStartTime;
+    // ── Page navigation ──────────────────────────────────────────────────────
+    // Every page control lives directly in pnlContent, stacked Dock=Fill on
+    // top of one another (see Designer.cs) — ShowPage(int) just toggles which
+    // one is Visible, mirroring how a mobile app swaps the current screen
+    // instead of a desktop multi-tab strip. bottomNav (DLBottomTabBar) drives
+    // this and stays in sync whenever code elsewhere jumps pages directly
+    // (e.g. DeckSlots_EditCards jumping to the Deck Editor tab).
+    private Control[] _pages = Array.Empty<Control>();
+    private int _currentPageIndex = -1;
 
     public MainForm()
     {
@@ -54,16 +37,17 @@ public partial class MainForm : Form
 
         ThemeManager.ThemeChanged += OnThemeChanged;
 
-        // Sidebar setup (previously done inside SidebarPanel's own constructor).
-        pnlSidebar.MinimumSize = new Size(SidebarCollapsedWidth, 0);
-        pnlSidebar.Width = SidebarExpandedWidth;
-        _sidebarAnimTimer.Tick += SidebarAnimTimer_Tick;
-        RegisterNavItems();
-        SetActiveNavButton(btnDeckSlots, "DeckSlots");
-        ApplySidebarCollapsedVisualState(false); // establish the expanded text/tooltip state
+        _pages = new Control[] { deckSlotsPage, deckEditorPage, cardSearchPage, saveEditorPage, settingsPage };
 
-
-
+        bottomNav.SetTabs(new[]
+        {
+            new DLTabItem("Deck Slots"),
+            new DLTabItem("Deck Editor", elevated: true),
+            new DLTabItem("Card Search"),
+            new DLTabItem("Save Editor"),
+            new DLTabItem("Settings"),
+        });
+        ShowPage(0);
 
         // Hook DeckSlotsPage events
         deckSlotsPage.EditCardsRequested += new EventHandler<SlotInfo>(DeckSlots_EditCards);
@@ -80,6 +64,16 @@ public partial class MainForm : Form
             SetDirty(IsActuallyDirty());
         };
 
+        // SaveEditorPage writes straight into AppContext.State.SaveBytes too
+        // (duel points, campaign, unlocks, card collection) — same dirty
+        // tracking as the other editors. It snapshots undo itself before
+        // each edit.
+        saveEditorPage.DataChanged += (_, _) =>
+        {
+            RefreshSlots(AppContext.State.SaveBytes);
+            SetDirty(IsActuallyDirty());
+        };
+
         // Undo/redo — global, since edits can come from either page.
         AppContext.Undo.StackChanged += RefreshUndoRedoButtons;
         RefreshUndoRedoButtons();
@@ -89,9 +83,6 @@ public partial class MainForm : Form
     {
         if (disposing)
         {
-            _sidebarAnimTimer.Stop();
-            _sidebarAnimTimer.Dispose();
-            _sidebarCollapsedTips.Dispose();
             ThemeManager.ThemeChanged -= OnThemeChanged;
             AppContext.Undo.StackChanged -= RefreshUndoRedoButtons;
         }
@@ -107,7 +98,10 @@ public partial class MainForm : Form
     // ── Theming ───────────────────────────────────────────────────────────────
     // WinForms controls only read AppColors.X once, at construction, so the
     // only reliable way to re-skin everything is to rebuild the form. Close
-    // this instance and let Program.cs's loop spin up a fresh one.
+    // this instance and let Program.cs's loop spin up a fresh one. The app
+    // now ships a single fixed Duel Links look (no more Theme Editor access
+    // point), so in practice this only fires if something else in the code
+    // calls ThemeManager — kept for that safety net.
     private void OnThemeChanged()
     {
         if (InvokeRequired) { BeginInvoke(OnThemeChanged); return; }
@@ -127,137 +121,41 @@ public partial class MainForm : Form
         BackgroundPainter.Paint(this, e);
     }
 
+    // ── Page navigation ───────────────────────────────────────────────────────
+    private void ShowPage(int index)
+    {
+        if (index < 0 || index >= _pages.Length || index == _currentPageIndex)
+        {
+            if (index >= 0 && index < _pages.Length)
+                bottomNav.SelectedIndex = index;
+            return;
+        }
 
-    // ── Sidebar / drawer ─────────────────────────────────────────────────────
+        for (int i = 0; i < _pages.Length; i++)
+            _pages[i].Visible = i == index;
+
+        _currentPageIndex = index;
+        bottomNav.SelectedIndex = index;
+    }
+
+    private void BottomNav_SelectedIndexChanged(object? sender, EventArgs e) => ShowPage(bottomNav.SelectedIndex);
 
     private void NavigateTo(string key)
     {
         switch (key)
         {
-            case "DeckSlots": tabControl.SelectedIndex = 0; break;
-            case "DeckEditor": tabControl.SelectedIndex = 1; break;
-            case "CardSearch": tabControl.SelectedIndex = 2; break;
-            case "Settings": tabControl.SelectedIndex = 3; break;
+            case "DeckSlots": ShowPage(0); break;
+            case "DeckEditor": ShowPage(1); break;
+            case "CardSearch": ShowPage(2); break;
+            case "SaveEditor": ShowPage(3); break;
+            case "Settings": ShowPage(4); break;
             case "OpenSave": OnOpenSave(); break;
             case "SaveFile": OnSaveFile(); break;
         }
     }
 
-    private void TabControl_SelectedIndexChanged(object? sender, EventArgs e)
-    {
-        string[] keys = { "DeckSlots", "ImportYdk", "CopySwap", "DeckEditor", "CardSearch", "Settings" };
-        //if (tabControl.SelectedIndex >= 0 && tabControl.SelectedIndex < keys.Length)
-          //  drawer.SetActiveItem(keys[tabControl.SelectedIndex]);
-    }
-
-
-    // ── Sidebar collapse / expand ────────────────────────────────────────────
-    private void btnToggle_Click(object? sender, EventArgs e) => SetSidebarCollapsed(!_sidebarCollapsed);
-
-    /// <summary>Collapse or expand the drawer with a slide animation.</summary>
-    private void SetSidebarCollapsed(bool collapsed)
-    {
-        if (_sidebarCollapsed == collapsed)
-            return;
-
-        _sidebarCollapsed = collapsed;
-
-        _sidebarAnimStartWidth = pnlSidebar.Width;
-        _sidebarAnimTargetWidth = _sidebarCollapsed ? SidebarCollapsedWidth : SidebarExpandedWidth;
-        _sidebarAnimStartTime = DateTime.UtcNow;
-
-        ApplySidebarCollapsedVisualState(_sidebarCollapsed);
-
-        if (!_sidebarAnimTimer.Enabled)
-            _sidebarAnimTimer.Start();
-    }
-
-    private void ApplySidebarCollapsedVisualState(bool collapsed)
-    {
-        lblSecManage.Visible = !collapsed;
-        lblSecTools.Visible = !collapsed;
-        lblSecFile.Visible = !collapsed;
-
-        btnToggle.Text = collapsed ? "▶" : "◀";
-
-        // Re-flow each button's own text instead of hiding a separate icon
-        // control — the button (and its click handler) always occupies the
-        // full row, whether that row is 200px or 48px wide.
-        foreach (var (btn, info) in _navItems)
-        {
-            btn.Text = collapsed ? info.Icon : $"{info.Icon}{SidebarIconLabelGap}{info.Label}";
-            btn.TextAlignment = collapsed ? StringAlignment.Center : StringAlignment.Near;
-            btn.Font = collapsed ? SidebarCollapsedNavFont : SidebarExpandedNavFont;
-        }
-
-        SetSidebarCollapsedTooltipsEnabled(collapsed);
-    }
-
-    private void SidebarAnimTimer_Tick(object? sender, EventArgs e)
-    {
-        double elapsedMs = (DateTime.UtcNow - _sidebarAnimStartTime).TotalMilliseconds;
-        double t = Math.Min(1.0, elapsedMs / SidebarAnimationDurationMs);
-        double eased = 1 - Math.Pow(1 - t, 3); // ease-out cubic
-
-        int newWidth = _sidebarAnimStartWidth + (int)Math.Round((_sidebarAnimTargetWidth - _sidebarAnimStartWidth) * eased);
-
-        pnlSidebar.SuspendLayout();
-        pnlSidebar.Width = newWidth;
-        pnlSidebar.ResumeLayout(true);
-
-        if (t >= 1.0)
-        {
-            _sidebarAnimTimer.Stop();
-            pnlSidebar.Width = _sidebarAnimTargetWidth;
-        }
-    }
-
-    // ── Nav item registry ────────────────────────────────────────────────────
-    private void RegisterNavItems()
-    {
-        _navItems[btnDeckSlots] = ("⊞", "Deck slots");
-        _navItems[btnDeckEditor] = ("▦", "Deck editor");
-        _navItems[btnCardSearch] = ("⌕", "Card search");
-        _navItems[btnOpenSave] = ("▤", "Open save");
-        _navItems[btnSaveFile] = ("💾", "Save file");
-        _navItems[btnSettings] = ("⚙", "Settings");
-
-        // Only useful once the label text disappears and just the glyph remains.
-        foreach (var (btn, info) in _navItems) {
-            _sidebarCollapsedTips.SetToolTip(btn, info.Label);
-            btn.ForeColor = AppColors.TextNav;
-            btn.InactiveColor = AppColors.CardBg;
-        }
-        SetActiveNavButton(btnDeckSlots, "DeckSlots");
-        SetSidebarCollapsedTooltipsEnabled(false);
-    }
-
-    private void SetSidebarCollapsedTooltipsEnabled(bool enabled) => _sidebarCollapsedTips.Active = enabled;
-
-    // ── Nav button click handlers ─────────────────────────────────────────────
-    private void SetActiveNavButton(ReaLTaiizor.Controls.Button btn, string key)
-    {
-        if (_activeNavBtn != null)
-        {
-            _activeNavBtn.InactiveColor = AppColors.CardBg;
-            _activeNavBtn.ForeColor = AppColors.TextNav;
-        }
-
-        _activeNavBtn = btn;
-        _activeNavBtn.InactiveColor = AppColors.GoldBtnBg;
-        _activeNavBtn.ForeColor = AppColors.GoldBtnFg;
-
-        NavigateTo(key);
-    }
-
-    private void btnDeckSlots_Click(object? s, EventArgs e) => SetActiveNavButton(btnDeckSlots, "DeckSlots");
-    private void btnDeckEditor_Click(object? s, EventArgs e) => SetActiveNavButton(btnDeckEditor, "DeckEditor");
-    private void btnCardSearch_Click(object? s, EventArgs e) => SetActiveNavButton(btnCardSearch, "CardSearch");
-    private void btnOpenSave_Click(object? s, EventArgs e) => NavigateTo("OpenSave");
-    private void btnSaveFile_Click(object? s, EventArgs e) => NavigateTo("SaveFile");
-    private void btnSettings_Click(object? s, EventArgs e) => SetActiveNavButton(btnSettings,"Settings");
-
     // ── Topbar actions ────────────────────────────────────────────────────────
+    private void btnOpenSave_Click(object? sender, EventArgs e) => OnOpenSave();
     private void btnSave_Click(object? sender, EventArgs e) => OnSaveFile();
 
     // ── Undo / redo ───────────────────────────────────────────────────────────
@@ -286,6 +184,7 @@ public partial class MainForm : Form
         RefreshSlots(AppContext.State.SaveBytes);
         deckSlotsPage.RefreshSelectedDetail();
         deckEditorPage.ReloadCurrentDeck();
+        saveEditorPage.RefreshFromState();
         SetDirty(IsActuallyDirty());
     }
 
@@ -322,9 +221,9 @@ public partial class MainForm : Form
         bool isGridKey = e.KeyCode is Keys.Left or Keys.Right or Keys.Up or Keys.Down or Keys.Delete;
         if (!isGridKey) return;
 
-        if (tabControl.SelectedIndex == 0)
+        if (_currentPageIndex == 0)
             deckSlotsPage.HandleGridKeyDown(e);
-        else if (tabControl.SelectedIndex == 1)
+        else if (_currentPageIndex == 1)
             deckEditorPage.HandleGridKeyDown(e);
     }
 
@@ -340,7 +239,7 @@ public partial class MainForm : Form
     private void DeckSlots_EditCards(object? sender, SlotInfo slot)
     {
         deckEditorPage.LoadDeck(slot, AppContext.CardDb);
-        tabControl.SelectedIndex = 1;              // DeckEditor tab index
+        ShowPage(1); // DeckEditor tab index
     }
 
     private void DeckSlots_Clear(object? sender, SlotInfo slot)
@@ -424,7 +323,14 @@ public partial class MainForm : Form
 
          AppContext.State.SavePath = currentpath;
 
-
+        // Detect which on-disk save format this file uses (original "Lotd" vs
+        // "Link Evolution" — they put the deck-slot/campaign/misc/card-list
+        // chunks at different offsets). Everything that reads those chunks
+        // (SlotLayout, MiscSaveLayout, CampaignSaveLayout, CardCollectionLayout)
+        // reads AppContext.State.Version / SlotLayout.CurrentVersion rather
+        // than assuming a fixed layout.
+        AppContext.State.Version = LotdSaveFormat.DetectVersion(bytes);
+        SlotLayout.CurrentVersion = AppContext.State.Version;
 
         _originalSaveBytes = (byte[])bytes.Clone();
         AppContext.State.DirtyBaseline = (byte[])bytes.Clone();
@@ -437,6 +343,7 @@ public partial class MainForm : Form
         SetDirty(IsActuallyDirty());
 
         RefreshSlots(bytes);
+        saveEditorPage.RefreshFromState();
 
         int empties =  AppContext.State.Slots.Count(s => s.IsEmpty);
 
@@ -454,7 +361,7 @@ public partial class MainForm : Form
         AppContext.State.Slots = slots.ToArray();   // ← new: actually persist the loaded slots
 
         deckSlotsPage.LoadSlots(slots);
-    
+
     }
     private void OnSaveFile()
     {
@@ -536,13 +443,5 @@ public partial class MainForm : Form
             form.CancelButton = cancel;
             return form.ShowDialog() == DialogResult.OK ? txt.Text : null;
         }
-    }
-
-    private void btnSave_EnabledChanged(object sender, EventArgs e)
-    {
-        if(btnSave.Enabled)
-            btnSave.BackColor = AppColors.GoldBtnBg;
-        else
-            btnSave.BackColor = Color.Transparent;
     }
 }

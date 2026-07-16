@@ -8,9 +8,9 @@ partial class DeckEditorPage
 {
     // ── Toolbar ────────────────────────────────────────────────────────────────
     private TextBox txtSearch;
-    private ReaLTaiizor.Controls.Button btnFilter;
-    private ReaLTaiizor.Controls.Button btnSort;
-    private ReaLTaiizor.Controls.Button btnSave;
+    private DLButton btnFilter;
+    private DLButton btnSort;
+    private DLButton btnSave;
     private Label lblDeckName;
     private Panel pnlToolbar;
     private Panel pnlToolbarDiv;
@@ -136,9 +136,9 @@ partial class DeckEditorPage
     private void InitializeComponent()
     {
         txtSearch = new TextBox();
-        btnFilter = new ReaLTaiizor.Controls.Button();
-        btnSort = new ReaLTaiizor.Controls.Button();
-        btnSave = new ReaLTaiizor.Controls.Button();
+        btnFilter = new DLButton();
+        btnSort = new DLButton();
+        btnSave = new DLButton();
         lblDeckName = new Label();
         pnlToolbar = new Panel();
         pnlToolbarDiv = new Panel();
@@ -279,72 +279,38 @@ partial class DeckEditorPage
         txtSearch.Size = new Size(180, 23);
         txtSearch.TabIndex = 0;
         txtSearch.TextChanged += txtSearch_TextChanged;
-        // 
+        //
         // btnFilter
-        // 
-        btnFilter.BackColor = Color.Transparent;
-        btnFilter.BorderColor = AppColors.ButtonNeutralBg;
-        btnFilter.Cursor = Cursors.Hand;
-        btnFilter.EnteredBorderColor = AppColors.AccentRedHover;
-        btnFilter.EnteredColor = AppColors.ButtonNeutralHover;
-        btnFilter.Font = new Font("Segoe UI", 8F);
-        btnFilter.Image = null;
-        btnFilter.ImageAlign = ContentAlignment.MiddleLeft;
-        btnFilter.InactiveColor = AppColors.ButtonNeutralBg;
-        btnFilter.Location = new Point(196, 10);
+        //
+        btnFilter.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold);
+        btnFilter.Location = new Point(196, 8);
         btnFilter.Name = "btnFilter";
-        btnFilter.PressedBorderColor = AppColors.AccentRedHover;
-        btnFilter.PressedColor = AppColors.AccentRedHover;
-        btnFilter.Size = new Size(60, 24);
+        btnFilter.Size = new Size(70, 28);
         btnFilter.TabIndex = 1;
-        btnFilter.TabStop = false;
         btnFilter.Text = "Filter";
-        btnFilter.TextAlignment = StringAlignment.Center;
+        btnFilter.Variant = DLButtonVariant.Secondary;
         btnFilter.Click += btnFilter_Click;
-        // 
+        //
         // btnSort
-        // 
-        btnSort.BackColor = Color.Transparent;
-        btnSort.BorderColor = AppColors.ButtonNeutralBg;
-        btnSort.Cursor = Cursors.Hand;
-        btnSort.EnteredBorderColor = AppColors.AccentRedHover;
-        btnSort.EnteredColor = AppColors.ButtonNeutralHover;
-        btnSort.Font = new Font("Segoe UI", 8F);
-        btnSort.Image = null;
-        btnSort.ImageAlign = ContentAlignment.MiddleLeft;
-        btnSort.InactiveColor = AppColors.ButtonNeutralBg;
-        btnSort.Location = new Point(262, 10);
+        //
+        btnSort.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold);
+        btnSort.Location = new Point(272, 8);
         btnSort.Name = "btnSort";
-        btnSort.PressedBorderColor = AppColors.AccentRedHover;
-        btnSort.PressedColor = AppColors.AccentRedHover;
-        btnSort.Size = new Size(60, 24);
+        btnSort.Size = new Size(70, 28);
         btnSort.TabIndex = 2;
-        btnSort.TabStop = false;
         btnSort.Text = "Sort";
-        btnSort.TextAlignment = StringAlignment.Center;
+        btnSort.Variant = DLButtonVariant.Secondary;
         btnSort.Click += btnSort_Click;
         //
         // btnSave
         //
-        btnSave.BackColor = AppColors.GoldBtnBg;
-        btnSave.BorderColor = AppColors.GoldBtnBg;
-        btnSave.Cursor = Cursors.Hand;
-        btnSave.EnteredBorderColor = AppColors.GoldBtnHover;
-        btnSave.EnteredColor = AppColors.GoldBtnHover;
-        btnSave.Font = new Font("Segoe UI", 8F, FontStyle.Bold);
-        btnSave.ForeColor = AppColors.GoldBtnFg;
-        btnSave.Image = null;
-        btnSave.ImageAlign = ContentAlignment.MiddleLeft;
-        btnSave.InactiveColor = AppColors.GoldBtnBg;
-        btnSave.Location = new Point(328, 10);
+        btnSave.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold);
+        btnSave.Location = new Point(348, 8);
         btnSave.Name = "btnSave";
-        btnSave.PressedBorderColor = AppColors.AccentRedHover;
-        btnSave.PressedColor = AppColors.AccentRedHover;
-        btnSave.Size = new Size(60, 24);
+        btnSave.Size = new Size(70, 28);
         btnSave.TabIndex = 3;
-        btnSave.TabStop = false;
         btnSave.Text = "Save";
-        btnSave.TextAlignment = StringAlignment.Center;
+        btnSave.Variant = DLButtonVariant.Primary;
         btnSave.Click += btnSave_Click;
         //
         // lblDeckName
@@ -353,9 +319,9 @@ partial class DeckEditorPage
         lblDeckName.BackColor = Color.Transparent;
         lblDeckName.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
         lblDeckName.ForeColor = AppColors.TextGold;
-        lblDeckName.Location = new Point(394, 10);
+        lblDeckName.Location = new Point(426, 10);
         lblDeckName.Name = "lblDeckName";
-        lblDeckName.Size = new Size(446, 24);
+        lblDeckName.Size = new Size(414, 24);
         lblDeckName.TabIndex = 4;
         lblDeckName.Text = "— No deck loaded —";
         lblDeckName.TextAlign = ContentAlignment.MiddleCenter;
@@ -450,8 +416,8 @@ partial class DeckEditorPage
         // lblMainCount
         // 
         lblMainCount.BackColor = Color.Transparent;
-        lblMainCount.Font = new Font("Segoe UI", 7F);
-        lblMainCount.ForeColor = AppColors.TextDim;
+        lblMainCount.Font = new Font("Segoe UI", 8F, FontStyle.Bold);
+        lblMainCount.ForeColor = AppColors.TextGold;
         lblMainCount.Location = new Point(8, 8);
         lblMainCount.Name = "lblMainCount";
         lblMainCount.Size = new Size(740, 20);
@@ -1129,8 +1095,8 @@ partial class DeckEditorPage
         // lblExtraCount
         // 
         lblExtraCount.BackColor = Color.Transparent;
-        lblExtraCount.Font = new Font("Segoe UI", 7F);
-        lblExtraCount.ForeColor = AppColors.TextDim;
+        lblExtraCount.Font = new Font("Segoe UI", 8F, FontStyle.Bold);
+        lblExtraCount.ForeColor = AppColors.ExtraBorder;
         lblExtraCount.Location = new Point(8, 592);
         lblExtraCount.Name = "lblExtraCount";
         lblExtraCount.Size = new Size(740, 20);
@@ -1165,6 +1131,7 @@ partial class DeckEditorPage
         slotExtra00.BackColor = AppColors.CardBg;
         slotExtra00.IsOnline = false;
         slotExtra00.IsSelected = false;
+        slotExtra00.Role = CardSlot.SlotRole.Extra;
         slotExtra00.Location = new Point(0, 0);
         slotExtra00.Name = "slotExtra00";
         slotExtra00.Size = new Size(60, 88);
@@ -1175,6 +1142,7 @@ partial class DeckEditorPage
         slotExtra01.BackColor = AppColors.CardBg;
         slotExtra01.IsOnline = false;
         slotExtra01.IsSelected = false;
+        slotExtra01.Role = CardSlot.SlotRole.Extra;
         slotExtra01.Location = new Point(64, 0);
         slotExtra01.Name = "slotExtra01";
         slotExtra01.Size = new Size(60, 88);
@@ -1185,6 +1153,7 @@ partial class DeckEditorPage
         slotExtra02.BackColor = AppColors.CardBg;
         slotExtra02.IsOnline = false;
         slotExtra02.IsSelected = false;
+        slotExtra02.Role = CardSlot.SlotRole.Extra;
         slotExtra02.Location = new Point(128, 0);
         slotExtra02.Name = "slotExtra02";
         slotExtra02.Size = new Size(60, 88);
@@ -1195,6 +1164,7 @@ partial class DeckEditorPage
         slotExtra03.BackColor = AppColors.CardBg;
         slotExtra03.IsOnline = false;
         slotExtra03.IsSelected = false;
+        slotExtra03.Role = CardSlot.SlotRole.Extra;
         slotExtra03.Location = new Point(192, 0);
         slotExtra03.Name = "slotExtra03";
         slotExtra03.Size = new Size(60, 88);
@@ -1205,6 +1175,7 @@ partial class DeckEditorPage
         slotExtra04.BackColor = AppColors.CardBg;
         slotExtra04.IsOnline = false;
         slotExtra04.IsSelected = false;
+        slotExtra04.Role = CardSlot.SlotRole.Extra;
         slotExtra04.Location = new Point(256, 0);
         slotExtra04.Name = "slotExtra04";
         slotExtra04.Size = new Size(60, 88);
@@ -1215,6 +1186,7 @@ partial class DeckEditorPage
         slotExtra05.BackColor = AppColors.CardBg;
         slotExtra05.IsOnline = false;
         slotExtra05.IsSelected = false;
+        slotExtra05.Role = CardSlot.SlotRole.Extra;
         slotExtra05.Location = new Point(320, 0);
         slotExtra05.Name = "slotExtra05";
         slotExtra05.Size = new Size(60, 88);
@@ -1225,6 +1197,7 @@ partial class DeckEditorPage
         slotExtra06.BackColor = AppColors.CardBg;
         slotExtra06.IsOnline = false;
         slotExtra06.IsSelected = false;
+        slotExtra06.Role = CardSlot.SlotRole.Extra;
         slotExtra06.Location = new Point(384, 0);
         slotExtra06.Name = "slotExtra06";
         slotExtra06.Size = new Size(60, 88);
@@ -1235,6 +1208,7 @@ partial class DeckEditorPage
         slotExtra07.BackColor = AppColors.CardBg;
         slotExtra07.IsOnline = false;
         slotExtra07.IsSelected = false;
+        slotExtra07.Role = CardSlot.SlotRole.Extra;
         slotExtra07.Location = new Point(448, 0);
         slotExtra07.Name = "slotExtra07";
         slotExtra07.Size = new Size(60, 88);
@@ -1245,6 +1219,7 @@ partial class DeckEditorPage
         slotExtra08.BackColor = AppColors.CardBg;
         slotExtra08.IsOnline = false;
         slotExtra08.IsSelected = false;
+        slotExtra08.Role = CardSlot.SlotRole.Extra;
         slotExtra08.Location = new Point(512, 0);
         slotExtra08.Name = "slotExtra08";
         slotExtra08.Size = new Size(60, 88);
@@ -1255,6 +1230,7 @@ partial class DeckEditorPage
         slotExtra09.BackColor = AppColors.CardBg;
         slotExtra09.IsOnline = false;
         slotExtra09.IsSelected = false;
+        slotExtra09.Role = CardSlot.SlotRole.Extra;
         slotExtra09.Location = new Point(576, 0);
         slotExtra09.Name = "slotExtra09";
         slotExtra09.Size = new Size(60, 88);
@@ -1265,6 +1241,7 @@ partial class DeckEditorPage
         slotExtra10.BackColor = AppColors.CardBg;
         slotExtra10.IsOnline = false;
         slotExtra10.IsSelected = false;
+        slotExtra10.Role = CardSlot.SlotRole.Extra;
         slotExtra10.Location = new Point(0, 92);
         slotExtra10.Name = "slotExtra10";
         slotExtra10.Size = new Size(60, 88);
@@ -1275,6 +1252,7 @@ partial class DeckEditorPage
         slotExtra11.BackColor = AppColors.CardBg;
         slotExtra11.IsOnline = false;
         slotExtra11.IsSelected = false;
+        slotExtra11.Role = CardSlot.SlotRole.Extra;
         slotExtra11.Location = new Point(64, 92);
         slotExtra11.Name = "slotExtra11";
         slotExtra11.Size = new Size(60, 88);
@@ -1285,6 +1263,7 @@ partial class DeckEditorPage
         slotExtra12.BackColor = AppColors.CardBg;
         slotExtra12.IsOnline = false;
         slotExtra12.IsSelected = false;
+        slotExtra12.Role = CardSlot.SlotRole.Extra;
         slotExtra12.Location = new Point(128, 92);
         slotExtra12.Name = "slotExtra12";
         slotExtra12.Size = new Size(60, 88);
@@ -1295,6 +1274,7 @@ partial class DeckEditorPage
         slotExtra13.BackColor = AppColors.CardBg;
         slotExtra13.IsOnline = false;
         slotExtra13.IsSelected = false;
+        slotExtra13.Role = CardSlot.SlotRole.Extra;
         slotExtra13.Location = new Point(192, 92);
         slotExtra13.Name = "slotExtra13";
         slotExtra13.Size = new Size(60, 88);
@@ -1305,6 +1285,7 @@ partial class DeckEditorPage
         slotExtra14.BackColor = AppColors.CardBg;
         slotExtra14.IsOnline = false;
         slotExtra14.IsSelected = false;
+        slotExtra14.Role = CardSlot.SlotRole.Extra;
         slotExtra14.Location = new Point(256, 92);
         slotExtra14.Name = "slotExtra14";
         slotExtra14.Size = new Size(60, 88);
@@ -1313,8 +1294,8 @@ partial class DeckEditorPage
         // lblSideCount
         // 
         lblSideCount.BackColor = Color.Transparent;
-        lblSideCount.Font = new Font("Segoe UI", 7F);
-        lblSideCount.ForeColor = AppColors.TextDim;
+        lblSideCount.Font = new Font("Segoe UI", 8F, FontStyle.Bold);
+        lblSideCount.ForeColor = AppColors.SideBorder;
         lblSideCount.Location = new Point(8, 808);
         lblSideCount.Name = "lblSideCount";
         lblSideCount.Size = new Size(740, 20);
@@ -1349,6 +1330,7 @@ partial class DeckEditorPage
         slotSide00.BackColor = AppColors.CardBg;
         slotSide00.IsOnline = false;
         slotSide00.IsSelected = false;
+        slotSide00.Role = CardSlot.SlotRole.Side;
         slotSide00.Location = new Point(0, 0);
         slotSide00.Name = "slotSide00";
         slotSide00.Size = new Size(60, 88);
@@ -1359,6 +1341,7 @@ partial class DeckEditorPage
         slotSide01.BackColor = AppColors.CardBg;
         slotSide01.IsOnline = false;
         slotSide01.IsSelected = false;
+        slotSide01.Role = CardSlot.SlotRole.Side;
         slotSide01.Location = new Point(64, 0);
         slotSide01.Name = "slotSide01";
         slotSide01.Size = new Size(60, 88);
@@ -1369,6 +1352,7 @@ partial class DeckEditorPage
         slotSide02.BackColor = AppColors.CardBg;
         slotSide02.IsOnline = false;
         slotSide02.IsSelected = false;
+        slotSide02.Role = CardSlot.SlotRole.Side;
         slotSide02.Location = new Point(128, 0);
         slotSide02.Name = "slotSide02";
         slotSide02.Size = new Size(60, 88);
@@ -1379,6 +1363,7 @@ partial class DeckEditorPage
         slotSide03.BackColor = AppColors.CardBg;
         slotSide03.IsOnline = false;
         slotSide03.IsSelected = false;
+        slotSide03.Role = CardSlot.SlotRole.Side;
         slotSide03.Location = new Point(192, 0);
         slotSide03.Name = "slotSide03";
         slotSide03.Size = new Size(60, 88);
@@ -1389,6 +1374,7 @@ partial class DeckEditorPage
         slotSide04.BackColor = AppColors.CardBg;
         slotSide04.IsOnline = false;
         slotSide04.IsSelected = false;
+        slotSide04.Role = CardSlot.SlotRole.Side;
         slotSide04.Location = new Point(256, 0);
         slotSide04.Name = "slotSide04";
         slotSide04.Size = new Size(60, 88);
@@ -1399,6 +1385,7 @@ partial class DeckEditorPage
         slotSide05.BackColor = AppColors.CardBg;
         slotSide05.IsOnline = false;
         slotSide05.IsSelected = false;
+        slotSide05.Role = CardSlot.SlotRole.Side;
         slotSide05.Location = new Point(320, 0);
         slotSide05.Name = "slotSide05";
         slotSide05.Size = new Size(60, 88);
@@ -1409,6 +1396,7 @@ partial class DeckEditorPage
         slotSide06.BackColor = AppColors.CardBg;
         slotSide06.IsOnline = false;
         slotSide06.IsSelected = false;
+        slotSide06.Role = CardSlot.SlotRole.Side;
         slotSide06.Location = new Point(384, 0);
         slotSide06.Name = "slotSide06";
         slotSide06.Size = new Size(60, 88);
@@ -1419,6 +1407,7 @@ partial class DeckEditorPage
         slotSide07.BackColor = AppColors.CardBg;
         slotSide07.IsOnline = false;
         slotSide07.IsSelected = false;
+        slotSide07.Role = CardSlot.SlotRole.Side;
         slotSide07.Location = new Point(448, 0);
         slotSide07.Name = "slotSide07";
         slotSide07.Size = new Size(60, 88);
@@ -1429,6 +1418,7 @@ partial class DeckEditorPage
         slotSide08.BackColor = AppColors.CardBg;
         slotSide08.IsOnline = false;
         slotSide08.IsSelected = false;
+        slotSide08.Role = CardSlot.SlotRole.Side;
         slotSide08.Location = new Point(512, 0);
         slotSide08.Name = "slotSide08";
         slotSide08.Size = new Size(60, 88);
@@ -1439,6 +1429,7 @@ partial class DeckEditorPage
         slotSide09.BackColor = AppColors.CardBg;
         slotSide09.IsOnline = false;
         slotSide09.IsSelected = false;
+        slotSide09.Role = CardSlot.SlotRole.Side;
         slotSide09.Location = new Point(576, 0);
         slotSide09.Name = "slotSide09";
         slotSide09.Size = new Size(60, 88);
@@ -1449,6 +1440,7 @@ partial class DeckEditorPage
         slotSide10.BackColor = AppColors.CardBg;
         slotSide10.IsOnline = false;
         slotSide10.IsSelected = false;
+        slotSide10.Role = CardSlot.SlotRole.Side;
         slotSide10.Location = new Point(0, 92);
         slotSide10.Name = "slotSide10";
         slotSide10.Size = new Size(60, 88);
@@ -1459,6 +1451,7 @@ partial class DeckEditorPage
         slotSide11.BackColor = AppColors.CardBg;
         slotSide11.IsOnline = false;
         slotSide11.IsSelected = false;
+        slotSide11.Role = CardSlot.SlotRole.Side;
         slotSide11.Location = new Point(64, 92);
         slotSide11.Name = "slotSide11";
         slotSide11.Size = new Size(60, 88);
@@ -1469,6 +1462,7 @@ partial class DeckEditorPage
         slotSide12.BackColor = AppColors.CardBg;
         slotSide12.IsOnline = false;
         slotSide12.IsSelected = false;
+        slotSide12.Role = CardSlot.SlotRole.Side;
         slotSide12.Location = new Point(128, 92);
         slotSide12.Name = "slotSide12";
         slotSide12.Size = new Size(60, 88);
@@ -1479,6 +1473,7 @@ partial class DeckEditorPage
         slotSide13.BackColor = AppColors.CardBg;
         slotSide13.IsOnline = false;
         slotSide13.IsSelected = false;
+        slotSide13.Role = CardSlot.SlotRole.Side;
         slotSide13.Location = new Point(192, 92);
         slotSide13.Name = "slotSide13";
         slotSide13.Size = new Size(60, 88);
@@ -1489,6 +1484,7 @@ partial class DeckEditorPage
         slotSide14.BackColor = AppColors.CardBg;
         slotSide14.IsOnline = false;
         slotSide14.IsSelected = false;
+        slotSide14.Role = CardSlot.SlotRole.Side;
         slotSide14.Location = new Point(256, 92);
         slotSide14.Name = "slotSide14";
         slotSide14.Size = new Size(60, 88);

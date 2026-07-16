@@ -1,0 +1,131 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+
+    <!--
+        The app's one fixed palette - a "Yu-Gi-Oh! Duel Links" mobile-UI look:
+        deep navy backgrounds, bright cyan borders/dividers, a teal gradient for
+        primary CTA buttons, a blue gradient for secondary buttons, gold for
+        callouts/active-tab state, and cyan/magenta/red for Main/Extra/Side
+        deck slots - traced from the same reference screenshots as the WinForms
+        build's Theme.cs (deck editor, deck list, Duel Studio menu, main hub,
+        Settings modal, Help/Etc. list). There is no theme-switching in this
+        app anymore - this file IS the theme.
+    -->
+
+    <!-- ── Backgrounds ─────────────────────────────────────────────────────── -->
+    <Color x:Key="AppBgColor">#FF070C16</Color>
+    <Color x:Key="SidebarBgColor">#FF091220</Color>
+    <Color x:Key="CardBgColor">#FF0D1C32</Color>
+    <Color x:Key="CardHoverColor">#FF132846</Color>
+    <Color x:Key="CardSelectedColor">#FF163858</Color>
+    <Color x:Key="TopbarBgColor">#FF070B14</Color>
+    <Color x:Key="InputBgColor">#FF0B182C</Color>
+    <Color x:Key="ActionBtnBgColor">#FF0E3462</Color>
+
+    <SolidColorBrush x:Key="AppBgBrush" Color="{StaticResource AppBgColor}" />
+    <SolidColorBrush x:Key="SidebarBgBrush" Color="{StaticResource SidebarBgColor}" />
+    <SolidColorBrush x:Key="CardBgBrush" Color="{StaticResource CardBgColor}" />
+    <SolidColorBrush x:Key="CardHoverBrush" Color="{StaticResource CardHoverColor}" />
+    <SolidColorBrush x:Key="CardSelectedBrush" Color="{StaticResource CardSelectedColor}" />
+    <SolidColorBrush x:Key="TopbarBgBrush" Color="{StaticResource TopbarBgColor}" />
+    <SolidColorBrush x:Key="InputBgBrush" Color="{StaticResource InputBgColor}" />
+    <SolidColorBrush x:Key="ActionBtnBgBrush" Color="{StaticResource ActionBtnBgColor}" />
+
+    <!-- ── Borders ─────────────────────────────────────────────────────────── -->
+    <Color x:Key="BorderCyanColor">#FF2ABCDC</Color>
+    <Color x:Key="BorderHoverColor">#FF6CE4FA</Color>
+    <Color x:Key="BorderGoldColor">#FFF7C740</Color>
+
+    <SolidColorBrush x:Key="BorderCyanBrush" Color="{StaticResource BorderCyanColor}" />
+    <SolidColorBrush x:Key="BorderHoverBrush" Color="{StaticResource BorderHoverColor}" />
+    <SolidColorBrush x:Key="BorderGoldBrush" Color="{StaticResource BorderGoldColor}" />
+
+    <!-- ── Text ────────────────────────────────────────────────────────────── -->
+    <SolidColorBrush x:Key="TextPrimaryBrush" Color="#FFF0F6FA" />
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#FFB2CEE0" />
+    <SolidColorBrush x:Key="TextMutedBrush" Color="#FF7492B0" />
+    <SolidColorBrush x:Key="TextDimBrush" Color="#FF4E6482" />
+    <SolidColorBrush x:Key="TextGoldBrush" Color="#FFFACA3C" />
+    <SolidColorBrush x:Key="TextNavActiveBrush" Color="#FFFACA3C" />
+    <SolidColorBrush x:Key="TextNavBrush" Color="#FF8CBED6" />
+    <SolidColorBrush x:Key="TextInfoBrush" Color="#FF76C8E6" />
+    <SolidColorBrush x:Key="TextCardNameBrush" Color="#FFEBD6A8" />
+    <SolidColorBrush x:Key="TextDescriptionBrush" Color="#FFC8D6E2" />
+
+    <!-- ── Main / Extra / Side deck slot colors ───────────────────────────────
+         Main = cyan, Extra = magenta, Side = red - matches the Main/Extra deck
+         slot border colors in the Duel Links deck editor screenshot. -->
+    <SolidColorBrush x:Key="MainBorderBrush" Color="#FF32C3E1" />
+    <SolidColorBrush x:Key="MainBgBrush" Color="#FF09202E" />
+    <SolidColorBrush x:Key="ExtraBorderBrush" Color="#FFD246AA" />
+    <SolidColorBrush x:Key="ExtraBgBrush" Color="#FF240C22" />
+    <SolidColorBrush x:Key="SideBorderBrush" Color="#FFC85050" />
+    <SolidColorBrush x:Key="SideBgBrush" Color="#FF280E0E" />
+
+    <SolidColorBrush x:Key="StatAtkBrush" Color="#FFEB785A" />
+    <SolidColorBrush x:Key="StatDefBrush" Color="#FF6EB4EB" />
+    <SolidColorBrush x:Key="StatMutedBrush" Color="#FFBEAF78" />
+    <SolidColorBrush x:Key="StatusOkBrush" Color="#FF5AD278" />
+
+    <!-- ── Buttons ─────────────────────────────────────────────────────────── -->
+    <!-- Primary CTA = teal (Duel Links reserves literal gold for small
+         accents/active tabs, not buttons - its primary action buttons like
+         "Card Inventory"/"Information" are teal/cyan). -->
+    <SolidColorBrush x:Key="PrimaryBtnBrush" Color="#FF1296A5" />
+    <SolidColorBrush x:Key="PrimaryBtnFgBrush" Color="#FF08141E" />
+    <SolidColorBrush x:Key="PrimaryBtnHoverBrush" Color="#FF28B9C8" />
+
+    <!-- Secondary = blue (MENU / Auto-Build Deck / Copy Deck / CLOSE). -->
+    <SolidColorBrush x:Key="SecondaryBtnBrush" Color="#FF124682" />
+    <SolidColorBrush x:Key="SecondaryBtnHoverBrush" Color="#FF1C5FA5" />
+
+    <SolidColorBrush x:Key="DangerFgBrush" Color="#FFEB7878" />
+    <SolidColorBrush x:Key="DangerBorderBrush" Color="#FF963C3C" />
+    <SolidColorBrush x:Key="DangerHoverBgBrush" Color="#FF3A1414" />
+    <SolidColorBrush x:Key="DangerAccentHoverBrush" Color="#FFDC5050" />
+
+    <!-- ── Misc ────────────────────────────────────────────────────────────── -->
+    <SolidColorBrush x:Key="OverlayBackdropBrush" Color="#CC04080E" />
+    <SolidColorBrush x:Key="PortraitBgBrush" Color="#FF0A1628" />
+    <SolidColorBrush x:Key="AccentDividerBrush" Color="#FF2882A0" />
+    <SolidColorBrush x:Key="OfflinePanelBgBrush" Color="#FF0F2139" />
+
+    <!-- ── Gradients (button fills, sheen highlight, top-bar glow) ────────────
+         WPF's real Storyboard/gradient/effect support is the whole reason
+         this rewrite exists - these replace the WinForms build's owner-drawn
+         GDI+ LinearGradientBrush-per-OnPaint-call with proper reusable
+         resources any control can reference. -->
+    <LinearGradientBrush x:Key="PrimaryBtnGradientBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#FF1CB4C4" Offset="0" />
+        <GradientStop Color="#FF1296A5" Offset="1" />
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="PrimaryBtnHoverGradientBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#FF3ECEDC" Offset="0" />
+        <GradientStop Color="#FF28B9C8" Offset="1" />
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="SecondaryBtnGradientBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#FF1A5AA0" Offset="0" />
+        <GradientStop Color="#FF124682" Offset="1" />
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="SecondaryBtnHoverGradientBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#FF2C74C0" Offset="0" />
+        <GradientStop Color="#FF1C5FA5" Offset="1" />
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="CardPanelGradientBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#FF16304F" Offset="0" />
+        <GradientStop Color="#FF0D1C32" Offset="1" />
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="SheenBrush" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#26FFFFFF" Offset="0" />
+        <GradientStop Color="#00FFFFFF" Offset="1" />
+    </LinearGradientBrush>
+
+    <!-- Shared corner radius / sizing tokens so every control agrees on how
+         "rounded" and how "chunky/touch-sized" things are. -->
+    <CornerRadius x:Key="PillRadius">18</CornerRadius>
+    <CornerRadius x:Key="PanelRadius">10</CornerRadius>
+    <CornerRadius x:Key="SlotRadius">6</CornerRadius>
+    <sys:Double x:Key="TouchTargetHeight">48</sys:Double>
+
+</ResourceDictionary>

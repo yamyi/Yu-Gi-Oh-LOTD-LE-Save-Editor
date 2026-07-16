@@ -3,13 +3,18 @@ namespace Yu_Gi_Oh_LOTD_LE_Deck_Manager.Services
 {
 
     /// <summary>
-    /// Memory layout of a single deck slot in the LOTD:LE save file.
-    /// 
-    /// Confirmed by binary diffing two saves (savegame.dat vs ful_1.dat)
-    /// and hex-dumping a populated slot at absolute offset 0x37C8.
-    /// 
+    /// Memory layout of a single deck slot in the LOTD save file.
+    ///
+    /// The deck-slot array sits at a different absolute offset depending on
+    /// which save format is loaded — see Slot1Offset/CurrentVersion below and
+    /// LotdSaveFormat.cs (offsets there are ported from pixeltris/Lotd, the
+    /// original reverse-engineered save-editing tool for this game). The
+    /// field-level layout within a single 0x130-byte slot block was confirmed
+    /// independently by binary diffing two saves (savegame.dat vs ful_1.dat)
+    /// and is the same across both save formats.
+    ///
     /// Slot array layout:
-    ///   Slot 1 offset = 0x37C8
+    ///   Slot 1 offset = Slot1Offset (version-dependent, see below)
     ///   slotBase            = countsOffset - CountsOffset
     ///   Each subsequent slot = slotBase + (n * SlotStrideBytes)
     /// 
@@ -37,8 +42,19 @@ namespace Yu_Gi_Oh_LOTD_LE_Deck_Manager.Services
 
         // ── Slot base anchor ─────────────────────────────────────────────────────
 
-        /// Absolute offset of the first slot's counts field.
-        public const int Slot1Offset = 0x37C8;
+        /// Which save format is currently loaded — set by MainForm right after a
+        /// save file is read (see LotdSaveFormat.DetectVersion). Defaults to
+        /// LinkEvolution so behavior is unchanged for anyone who was already
+        /// relying on the previous hardcoded offset before version detection
+        /// existed.
+        public static LotdSaveVersion CurrentVersion { get; set; } = LotdSaveVersion.LinkEvolution;
+
+        /// Absolute offset of the first slot's counts field. Version-dependent —
+        /// the original "Lotd" (2016) save format and the "Link Evolution"
+        /// (2019+) format put the deck-slot array at different offsets because
+        /// Link Evolution inserted a 6th duel series (VRAINS) and larger
+        /// battle-pack/misc/card-list chunks ahead of it. See LotdSaveFormat.cs.
+        public static int Slot1Offset => LotdSaveFormat.GetDecksOffset(CurrentVersion);
 
 
         // ── Fields (all offsets relative to slotBase) ─────────────────────────────

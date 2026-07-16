@@ -1,0 +1,182 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+
+    <!--
+        The app's one fixed palette - now traced from Yu-Gi-Oh! Master Duel's
+        UI instead of Duel Links (see the DUEL/DECK/SOLO/SHOP main menu and
+        deck-editor screenshots): near-black backgrounds cut by diagonal grey
+        geometric lines, a vivid lime-green accent for active/selected state
+        and primary actions, bold white uppercase text, and the N/R/SR/UR
+        card-rarity pip colors (grey/blue/gold/purple) from the card list
+        panel. Superseded from the old DuelLinksTheme.xaml, kept around
+        unused in case any of it is still wanted later.
+    -->
+
+    <!-- ── Backgrounds ─────────────────────────────────────────────────────── -->
+    <SolidColorBrush x:Key="AppBgBrush" Color="#FF050506" />
+    <SolidColorBrush x:Key="SidebarBgBrush" Color="#FF0B0C0F" />
+    <SolidColorBrush x:Key="CardBgBrush" Color="#FF14171C" />
+    <SolidColorBrush x:Key="CardHoverBrush" Color="#FF1E2229" />
+    <SolidColorBrush x:Key="CardSelectedBrush" Color="#FF262B33" />
+    <SolidColorBrush x:Key="TopbarBgBrush" Color="#FF08090B" />
+
+    <!-- Translucent variants of the two panel backgrounds above - used
+         instead of the opaque ones so the background art (Assets/backgrounds)
+         bleeds through the top bar and side nav too, not just the content
+         area, closer to how the source artwork's own diagonal panel reads. -->
+    <SolidColorBrush x:Key="TopbarBgTranslucentBrush" Color="#B308090B" />
+    <SolidColorBrush x:Key="SidebarBgTranslucentBrush" Color="#B30B0C0F" />
+    <SolidColorBrush x:Key="InputBgBrush" Color="#FF16191F" />
+    <SolidColorBrush x:Key="ActionBtnBgBrush" Color="#FF1B1F26" />
+
+    <!-- Diagonal accent lines drawn over the near-black canvas - subtle
+         slate-blue-grey, matching the faint geometric cut pattern behind the
+         main-menu artwork. -->
+    <SolidColorBrush x:Key="DiagonalLineBrush" Color="#332A3542" />
+
+    <!-- Tiled 45°-diagonal stripe texture built from DiagonalLineBrush - laid
+         as a thin overlay Rectangle over the top bar / sidebar backgrounds to
+         echo the faint geometric cut lines behind Master Duel's main menu,
+         without needing an image asset. -->
+    <DrawingBrush x:Key="DiagonalPatternBrush" TileMode="Tile" Stretch="None"
+                  Viewport="0,0,48,48" ViewportUnits="Absolute">
+        <DrawingBrush.Drawing>
+            <GeometryDrawing>
+                <GeometryDrawing.Pen>
+                    <Pen Brush="{StaticResource DiagonalLineBrush}" Thickness="1.25" />
+                </GeometryDrawing.Pen>
+                <GeometryDrawing.Geometry>
+                    <LineGeometry StartPoint="0,48" EndPoint="48,0" />
+                </GeometryDrawing.Geometry>
+            </GeometryDrawing>
+        </DrawingBrush.Drawing>
+    </DrawingBrush>
+
+    <!-- ── Borders ─────────────────────────────────────────────────────────── -->
+    <!-- Master Duel's panel/button borders are subtle dark grey, not
+         colored - lime green is reserved for the active/selected state and
+         primary buttons only (see AccentBrush below). -->
+    <SolidColorBrush x:Key="BorderBrush" Color="#FF2A2E36" />
+    <SolidColorBrush x:Key="BorderHoverBrush" Color="#FF454B56" />
+
+    <!-- ── Accent (lime-green - replaces Duel Links' cyan) ────────────────────
+         Used for the active nav row, SAVE button, selected chips, chevrons. -->
+    <SolidColorBrush x:Key="AccentBrush" Color="#FFCFF62E" />
+    <SolidColorBrush x:Key="AccentHoverBrush" Color="#FFE0FF66" />
+    <SolidColorBrush x:Key="AccentDimBrush" Color="#FF8FAD22" />
+    <SolidColorBrush x:Key="AccentFgBrush" Color="#FF0A0C04" />
+
+    <!-- ── Text ────────────────────────────────────────────────────────────── -->
+    <SolidColorBrush x:Key="TextPrimaryBrush" Color="#FFF4F5F6" />
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#FFC4C8CE" />
+    <SolidColorBrush x:Key="TextMutedBrush" Color="#FF8A8F97" />
+    <SolidColorBrush x:Key="TextDimBrush" Color="#FF5C6169" />
+    <SolidColorBrush x:Key="TextAccentBrush" Color="#FFCFF62E" />
+    <SolidColorBrush x:Key="TextNavActiveBrush" Color="#FF16181B" />
+    <SolidColorBrush x:Key="TextNavBrush" Color="#FFDDE0E3" />
+    <SolidColorBrush x:Key="TextInfoBrush" Color="#FFB9C2CC" />
+    <SolidColorBrush x:Key="TextCardNameBrush" Color="#FFEDEFF1" />
+    <SolidColorBrush x:Key="TextDescriptionBrush" Color="#FFCED2D7" />
+
+    <!-- ── Main / Extra / Side deck slot colors ─────────────────────────────── -->
+    <SolidColorBrush x:Key="MainBorderBrush" Color="#FF3D8EFF" />
+    <SolidColorBrush x:Key="MainBgBrush" Color="#FF0E1420" />
+    <SolidColorBrush x:Key="ExtraBorderBrush" Color="#FFB268FF" />
+    <SolidColorBrush x:Key="ExtraBgBrush" Color="#FF160E22" />
+    <SolidColorBrush x:Key="SideBorderBrush" Color="#FFFF5C5C" />
+    <SolidColorBrush x:Key="SideBgBrush" Color="#FF220E0E" />
+
+    <!-- ── Card rarity pips (N / R / SR / UR - from the Card List panel) ────── -->
+    <SolidColorBrush x:Key="RarityNBrush" Color="#FF8C8C8C" />
+    <SolidColorBrush x:Key="RarityRBrush" Color="#FF3D8EFF" />
+    <SolidColorBrush x:Key="RaritySRBrush" Color="#FFFFB020" />
+    <SolidColorBrush x:Key="RarityURBrush" Color="#FFB268FF" />
+
+    <SolidColorBrush x:Key="StatAtkBrush" Color="#FFEB785A" />
+    <SolidColorBrush x:Key="StatDefBrush" Color="#FF6EB4EB" />
+    <SolidColorBrush x:Key="StatMutedBrush" Color="#FFBEAF78" />
+    <SolidColorBrush x:Key="StatusOkBrush" Color="#FF5AD278" />
+    <SolidColorBrush x:Key="StatusWarningBrush" Color="#FFFFB020" />
+    <SolidColorBrush x:Key="StatusIllegalBrush" Color="#FFFF5C5C" />
+    <SolidColorBrush x:Key="StatusEmptyBrush" Color="#FF5C6169" />
+
+    <!-- ── Buttons ─────────────────────────────────────────────────────────── -->
+    <!-- Primary CTA = lime green (SAVE, active menu row). -->
+    <SolidColorBrush x:Key="PrimaryBtnBrush" Color="#FFCFF62E" />
+    <SolidColorBrush x:Key="PrimaryBtnFgBrush" Color="#FF0A0C04" />
+    <SolidColorBrush x:Key="PrimaryBtnHoverBrush" Color="#FFE0FF66" />
+
+    <!-- Secondary = dark slate (everything else - Undo/Redo, Open Save,
+         "Public Deck Search"/"List of Structure Decks"). -->
+    <SolidColorBrush x:Key="SecondaryBtnBrush" Color="#FF1B1F26" />
+    <SolidColorBrush x:Key="SecondaryBtnHoverBrush" Color="#FF262B33" />
+
+    <SolidColorBrush x:Key="DangerFgBrush" Color="#FFEB7878" />
+    <SolidColorBrush x:Key="DangerBorderBrush" Color="#FF963C3C" />
+    <SolidColorBrush x:Key="DangerHoverBgBrush" Color="#FF3A1414" />
+    <SolidColorBrush x:Key="DangerAccentHoverBrush" Color="#FFDC5050" />
+
+    <!-- ── Misc ────────────────────────────────────────────────────────────── -->
+    <SolidColorBrush x:Key="OverlayBackdropBrush" Color="#CC030304" />
+    <SolidColorBrush x:Key="PortraitBgBrush" Color="#FF14171C" />
+    <SolidColorBrush x:Key="AccentDividerBrush" Color="#552A3542" />
+    <SolidColorBrush x:Key="OfflinePanelBgBrush" Color="#FF14171C" />
+
+    <!-- ── Gradients ───────────────────────────────────────────────────────── -->
+    <LinearGradientBrush x:Key="PrimaryBtnGradientBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#FFE0FF66" Offset="0" />
+        <GradientStop Color="#FFCFF62E" Offset="1" />
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="PrimaryBtnHoverGradientBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#FFEBFF99" Offset="0" />
+        <GradientStop Color="#FFE0FF66" Offset="1" />
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="SecondaryBtnGradientBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#FF262B33" Offset="0" />
+        <GradientStop Color="#FF1B1F26" Offset="1" />
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="SecondaryBtnHoverGradientBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#FF323844" Offset="0" />
+        <GradientStop Color="#FF262B33" Offset="1" />
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="CardPanelGradientBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#FF1A1E25" Offset="0" />
+        <GradientStop Color="#FF14171C" Offset="1" />
+    </LinearGradientBrush>
+
+    <!-- Translucent variant of the panel gradient above - used by
+         DuelLinksPanelStyle so page panels (PlaceholderView and future
+         real pages) let the background art bleed through too, same
+         treatment as the top bar / side nav. -->
+    <LinearGradientBrush x:Key="CardPanelGradientTranslucentBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#B31A1E25" Offset="0" />
+        <GradientStop Color="#B314171C" Offset="1" />
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="SheenBrush" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#20FFFFFF" Offset="0" />
+        <GradientStop Color="#00FFFFFF" Offset="1" />
+    </LinearGradientBrush>
+
+    <!-- Dark scrim laid over the background artwork in the content area -
+         darkest where it meets the side nav, fading out toward the right so
+         the art still reads clearly, mirroring how Master Duel's own
+         backgrounds go from a solid dark panel into full-bleed character
+         art. -->
+    <LinearGradientBrush x:Key="ContentScrimBrush" StartPoint="0,0" EndPoint="1,0">
+        <GradientStop Color="#E6050506" Offset="0" />
+        <GradientStop Color="#99050506" Offset="0.35" />
+        <GradientStop Color="#4D050506" Offset="0.75" />
+        <GradientStop Color="#33050506" Offset="1" />
+    </LinearGradientBrush>
+
+    <!-- Shared corner radius / sizing tokens. Master Duel has almost no
+         rounded corners at all - everything is a sharp diagonal cut - so
+         these are mostly 0 now (kept as resources so nothing that still
+         references them breaks). -->
+    <CornerRadius x:Key="PillRadius">2</CornerRadius>
+    <CornerRadius x:Key="PanelRadius">0</CornerRadius>
+    <CornerRadius x:Key="SlotRadius">0</CornerRadius>
+    <sys:Double x:Key="TouchTargetHeight">48</sys:Double>
+
+</ResourceDictionary>

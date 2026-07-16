@@ -24,6 +24,8 @@ Built with C# / WinForms on .NET 8.
 
 **Cross-slot search.** The deck-slot browser's search box matches on deck name *or* any card inside the deck — so you can find "which slot has Blue-Eyes White Dragon" as easily as searching by deck name.
 
+**Save editor.** A dedicated tab for everything in the save file besides decks: set Duel Points directly; unlock, complete, or reset campaign duels per-series or across the whole campaign (forward and reverse duels separately); toggle unlocked shop packs, battle packs, avatars, and completed tutorials; bulk-manage duelist challenges and deck recipes; and bulk-edit the card collection (owned count 0–3, "seen"/NEW state). The app detects on load whether a save is the original *Legacy of the Duelist* format or the newer *Link Evolution* format and reads/writes the correct byte offsets for each — see "How the save format works" below. Per-card editing by name isn't available, since that mapping lives in the game's own installed data files rather than the save.
+
 ## Getting started
 
 1. Open `Yu-Gi-Oh LOTD LE Deck Manager.slnx` in Visual Studio 2022 (17.8+) or JetBrains Rider. The [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) is required.
@@ -50,7 +52,7 @@ Yu-Gi-Oh LOTD LE Deck Manager/
 ├── DragGhost.cs                  ← Cursor-following drag thumbnail helper
 │
 ├── Controls/
-│   ├── Pages/                    ← DeckSlotsPage, DeckEditorPage, CardSearchPage, SettingsPage
+│   ├── Pages/                    ← DeckSlotsPage, DeckEditorPage, CardSearchPage, SaveEditorPage, SettingsPage
 │   └── UserControls/             ← CardSlot, DeckCard, CardImageOverlay, and friends
 │
 ├── Forms/
@@ -60,7 +62,8 @@ Yu-Gi-Oh LOTD LE Deck Manager/
 │   └── OwnerPickerForm.cs        ← Duelist picker for "change duelist"
 │
 ├── Models/
-│   ├── Save/                     ← SlotLayout, SlotIO, OwnerDatabase, SaveSignatureFixer
+│   ├── Save/                     ← SlotLayout, SlotIO, OwnerDatabase, SaveSignatureFixer,
+│   │                                LotdSaveFormat, MiscSaveLayout, CampaignSaveLayout, CardCollectionLayout
 │   └── YDK/                      ← Card, Deck, CardDatabase, YDKReader/Writer
 │
 ├── Services/
@@ -74,7 +77,11 @@ Yu-Gi-Oh LOTD LE Deck Manager/
 
 ## How the save format works
 
-The relevant parts of `.dat` are documented in `Models/Save/SlotLayout.cs`: 32 fixed-size deck-slot blocks starting at a known offset, each holding a name, owner ID, Main/Extra/Side counts, and up to 90 card IDs (60 Main + 15 Extra + 15 Side), all little-endian. `SlotIO.cs` builds on that for reading/writing/copying/swapping whole slot blocks, and `SaveSignatureFixer.cs` patches whatever checksum/signature field the game expects before a save is written back to disk.
+`Models/Save/LotdSaveFormat.cs` detects which of the two save formats is loaded — the original *Legacy of the Duelist* (29005 bytes, 5 duel series) or *Link Evolution* (44008 bytes, 6 duel series, adds VRAINS) — from the file's header magic bytes, and exposes the byte offset/size of every top-level chunk (Stats, Battle Packs, Misc, Campaign, Decks, Card List) for whichever format is active. Everything else reads through that rather than assuming a fixed layout.
+
+`Models/Save/SlotLayout.cs` documents the deck-slot block itself: 32 fixed-size blocks, each holding a name, owner ID, Main/Extra/Side counts, and up to 90 card IDs (60 Main + 15 Extra + 15 Side), all little-endian — its base offset now comes from `LotdSaveFormat` instead of being hardcoded. `SlotIO.cs` builds on that for reading/writing/copying/swapping whole slot blocks. `MiscSaveLayout.cs` and `CampaignSaveLayout.cs` cover Duel Points, avatar/shop-pack/battle-pack/tutorial unlocks, duelist challenges, deck recipes, and campaign duel states; `CardCollectionLayout.cs` covers the per-card owned-count/seen byte array. `SaveSignatureFixer.cs` patches the checksum/signature field the game expects before a save is written back to disk.
+
+These offsets and struct layouts are ported from [pixeltris/Lotd](https://github.com/pixeltris/Lotd), the original reverse-engineered save-editing tool for this game.
 
 Card lookups go through `Models/YDK/CardDatabase.cs`, which maps between the game's own internal `LotdId` and the broader YGOPRODeck-style card data bundled in `Cards.json` — only cards with a known `LotdId` can actually be written into a save slot.
 
@@ -83,3 +90,4 @@ Card lookups go through `Models/YDK/CardDatabase.cs`, which maps between the gam
 - No installer — run from source or a self-built binary.
 - Deck legality badges check structural size limits only; the app has no LOTD-specific banlist data, so it can't flag individual banned/limited cards.
 - Compiling requires a Windows machine with the .NET 8 SDK and WinForms workload — there's no cross-platform build target.
+- The Save Editor's card collection and duelist-challenge/deck-recipe sections are bulk-only — the save tracks those by an internal index the game derives from its own installed data files, not by name, so editing a single named card or challenge isn't possible here.

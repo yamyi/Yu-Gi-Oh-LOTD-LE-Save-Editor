@@ -7,6 +7,14 @@ namespace Yu_Gi_Oh_LOTD_LE_Deck_Manager.Services
         public string SavePath { get; set; } = "";
         public byte[]? SaveBytes { get; set; }
 
+        // Which on-disk save format is currently loaded (original "Lotd" vs
+        // "Link Evolution") — detected from the header magic bytes right after
+        // a file is read (see LotdSaveFormat.DetectVersion, called from
+        // MainForm.LoadSaveSlots). Everything that depends on chunk offsets
+        // (SlotLayout, MiscSaveLayout, CampaignSaveLayout, CardCollectionLayout)
+        // reads this rather than assuming a fixed format.
+        public LotdSaveVersion Version { get; set; } = LotdSaveVersion.LinkEvolution;
+
         // Dirty-tracking baseline, mirrored here (not just as a MainForm-local
         // field) so a theme-change soft restart (see Program.cs) can rebuild
         // MainForm without losing track of "have I saved since I last loaded
