@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="Yu-Gi-Oh LOTD LE Save Editor.Wpf/Yu-Gi-Oh LOTD LE Save Editor.Wpf.csproj" />
+  <Properties Name="SolutionProperties">
+    <Property Name="WorkspaceFolder" Value="Yu-Gi-Oh LOTD LE Deck Manager" />
+  </Properties>
+</Solution>
