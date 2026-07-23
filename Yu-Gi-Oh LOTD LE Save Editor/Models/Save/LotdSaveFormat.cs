@@ -1,4 +1,4 @@
-namespace Yu_Gi_Oh_LOTD_LE_Deck_Manager.Services
+namespace YuGiOhSaveEditor.Services
 {
     /// <summary>
     /// Which on-disk save format a .dat file uses. The game shipped in two eras
@@ -83,8 +83,22 @@ namespace Yu_Gi_Oh_LOTD_LE_Deck_Manager.Services
         public static int GetRecipeBufferBytes(LotdSaveVersion v) =>
             v == LotdSaveVersion.Lotd ? 60 : 88;
 
+        /// <summary>Real (non-padding) card count. LinkEvolution's value was
+        /// corrected 2026-07-23 from an old 10166 estimate to 10027 (10341 was
+        /// floated and then retracted as a mistake - 10027 is confirmed),
+        /// verified against a real save with every real card owned (3x) and
+        /// every other slot at 0 - a clean bimodal split with no partial
+        /// counts. This project's own Assets/cards/Cards.json independently
+        /// has lotd_id mappings for all 10027 cards (the one missing entry,
+        /// lotd_id 6053 = "7", was found and added 2026-07-23). That save
+        /// also proved real cards are scattered
+        /// throughout the full 20000-slot CardList chunk (owned indices ran
+        /// ~4007-14964, 353 separate runs), not clustered in a 0..N-1 prefix -
+        /// see CardCollectionLayout's summary/bulk methods, which scan the
+        /// full chunk rather than assuming this count is a contiguous
+        /// range.</summary>
         public static int GetNumCards(LotdSaveVersion v) =>
-            v == LotdSaveVersion.Lotd ? 7581 : 10166;
+            v == LotdSaveVersion.Lotd ? 7581 : 10027;
 
         public static int GetNumStats(LotdSaveVersion v) =>
             v == LotdSaveVersion.Lotd ? 43 : 100;

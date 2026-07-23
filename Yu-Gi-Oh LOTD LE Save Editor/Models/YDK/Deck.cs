@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Yu_Gi_Oh_LOTD_LE_Deck_Manager.Services
+namespace YuGiOhSaveEditor.Services
 {
     public class Deck
     {

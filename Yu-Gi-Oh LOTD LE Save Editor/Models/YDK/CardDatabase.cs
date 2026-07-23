@@ -1,8 +1,9 @@
-﻿using System.Reflection;
+﻿using System.IO;
+using System.Reflection;
 using System.Text.Json;
 
 
-namespace Yu_Gi_Oh_LOTD_LE_Deck_Manager.Services
+namespace YuGiOhSaveEditor.Services
 {
     public sealed class CardDatabase
     {
@@ -26,7 +27,7 @@ namespace Yu_Gi_Oh_LOTD_LE_Deck_Manager.Services
             // need to re-parse the embedded card JSON if it's already loaded.
             if (cards.Count > 0) return;
 
-            string resourceName = "Yu_Gi_Oh_LOTD_LE_Deck_Manager.Assets.cards.Cards.json";
+            string resourceName = "YuGiOhSaveEditor.Assets.cards.Cards.json";
 
             var assembly = Assembly.GetExecutingAssembly();
 
@@ -70,6 +71,14 @@ namespace Yu_Gi_Oh_LOTD_LE_Deck_Manager.Services
             return byLotdId.GetValueOrDefault(lotdId);
         }
 
+        /// <summary>Every real card's save-slot index (Card.LotdId), i.e. the
+        /// complete set of CardCollectionLayout indices that correspond to an
+        /// actual card rather than unused chunk padding. Used by "Unlock All
+        /// Cards" so it only sets the ~10027 real slots to 3, instead of the
+        /// full ~20000-slot chunk (which would inflate the owned-card counter
+        /// past GetNumCards(v) - see CardCollectionLayout.GetNumCardSlots).</summary>
+        public IEnumerable<int> AllLotdIds() => byLotdId.Keys;
+
         // Exact ID lookup — O(1)
 
         // Name contains — case-insensitive. Pass includeDescription to also
@@ -81,7 +90,7 @@ namespace Yu_Gi_Oh_LOTD_LE_Deck_Manager.Services
 
         // Combine multiple filters — covers every commonly-searched card
         // property (name/description, passcode, type/attribute/race/archetype,
-        // level, ATK/DEF range, link rating, pendulum scale).
+        // level, ATK/DEF range, link rating, pendulum scale, in-game ban status).
         public IEnumerable<Card> Filter(
             string? name = null,
             string? type = null,
@@ -99,6 +108,7 @@ namespace Yu_Gi_Oh_LOTD_LE_Deck_Manager.Services
             int? maxLinkVal = null,
             int? minScale = null,
             int? maxScale = null,
+            string? banStatus = null,
             bool searchDescription = false)
         {
             IEnumerable<Card> q = cards;
@@ -152,6 +162,12 @@ namespace Yu_Gi_Oh_LOTD_LE_Deck_Manager.Services
 
             if (maxScale.HasValue)
                 q = q.Where(c => c.Scale <= maxScale);
+
+            // In-game ban status (see LotdBanlist) - "Unlimited" matches
+            // every card with no entry on the list, same fallback
+            // CardPreviewFormatter.BanStatus/CardTileViewModel.BanStatus use.
+            if (!string.IsNullOrWhiteSpace(banStatus))
+                q = q.Where(c => (LotdBanlist.GetStatus(c.LotdId) ?? "Unlimited") == banStatus);
 
             return q;
         }

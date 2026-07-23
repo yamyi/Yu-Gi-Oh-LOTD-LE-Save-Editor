@@ -1,7 +1,7 @@
-﻿using Yu_Gi_Oh_LOTD_LE_Deck_Manager.Services;
-using static Yu_Gi_Oh_LOTD_LE_Deck_Manager.Services.SlotIO;
+﻿using YuGiOhSaveEditor.Services;
+using static YuGiOhSaveEditor.Services.SlotIO;
 
-namespace Yu_Gi_Oh_LOTD_LE_Deck_Manager;
+namespace YuGiOhSaveEditor;
 
 /// <summary>
 /// Global app-level state accessible from any form or page.

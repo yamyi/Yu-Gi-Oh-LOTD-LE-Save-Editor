@@ -1,6 +1,7 @@
+using System.IO;
 using System.Text;
 
-namespace Yu_Gi_Oh_LOTD_LE_Deck_Manager.Services
+namespace YuGiOhSaveEditor.Services
 {
     /// <summary>
     /// Writes a Deck out as a standard .ydk file (passcodes under #main / #extra / !side),

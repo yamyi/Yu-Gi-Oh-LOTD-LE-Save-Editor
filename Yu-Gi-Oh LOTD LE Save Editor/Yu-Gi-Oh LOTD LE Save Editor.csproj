@@ -1,0 +1,51 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <RootNamespace>YuGiOhSaveEditor</RootNamespace>
+    <AssemblyName>Yu-Gi-Oh LOTD LE Save Editor</AssemblyName>
+    <Nullable>enable</Nullable>
+    <UseWPF>true</UseWPF>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationIcon>favicon.ico</ApplicationIcon>
+
+    <!-- One exe, no loose .dll/.pdb sitting next to it in the publish
+         folder. Framework-dependent (no SelfContained/RuntimeIdentifier
+         here) - the target machine needs the .NET 8 Desktop Runtime
+         installed, but the publish output is much smaller than a
+         self-contained build. Since RuntimeIdentifier isn't set here,
+         `dotnet publish` needs one passed on the command line instead:
+         `dotnet publish -c Release -r win-x64 -self-contained false`.
+         IncludeNativeLibrariesForSelfExtract bundles WPF's native interop
+         DLLs (PresentationNative_*.dll, wpfgfx_*.dll, etc.) inside the exe
+         itself instead of copying them out as separate files next to it -
+         they still get extracted to a temp cache at first run each session
+         (that's how single-file native libs work), just not left sitting in
+         the publish folder. DebugType=embedded folds the .pdb into the exe
+         instead of publishing it as its own file. -->
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <DebugType>embedded</DebugType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Same card/character asset set as the WinForms app. LogicalName uses
+         this project's own namespace convention (YuGiOhSaveEditor.Assets...)
+         to match the resource-name string literals in CardDatabase.cs /
+         PortraitProvider.cs. -->
+    <EmbeddedResource Include="Assets\cards\Cards.json" Link="Assets\cards\Cards.json">
+      <LogicalName>YuGiOhSaveEditor.Assets.cards.Cards.json</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Assets\characters\*.png">
+      <Link>Assets\characters\%(Filename)%(Extension)</Link>
+      <LogicalName>YuGiOhSaveEditor.Assets.characters.%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\backgrounds\bg.png" />
+    <Resource Include="Assets\icons\*.png" />
+  </ItemGroup>
+
+</Project>

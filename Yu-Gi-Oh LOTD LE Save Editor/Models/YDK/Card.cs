@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace Yu_Gi_Oh_LOTD_LE_Deck_Manager.Services
+namespace YuGiOhSaveEditor.Services
 {
     // ── Root wrapper ──────────────────────────────────────────────────────────────
     public sealed class CardRoot
