@@ -14,9 +14,15 @@ Built with C# / WPF on .NET 8. Every screen is declared entirely in XAML — no 
 
 **Card Search.** Browse and inspect the full card database independently of any particular deck, with the same filtering options as Deck Editor.
 
-**Save Editor (campaign duels).** View and edit campaign duel completion/unlock state stored elsewhere in the save.
+**Save Editor.** A tabbed editor over the rest of the save file:
+- *Duel Points* — view and set the DP total.
+- *Campaign* — view and toggle completion for every non-reverse campaign duel.
+- *Unlocks* — Shop Packs and Battle Packs checklists (including duelist-specific packs like Blue Angel, Soulburner, Varis, Ai, War of the Giants/Round 2, and Epic Dawn) plus Tutorials, each with per-item toggles and bulk Unlock All / Clear All.
+- *Avatars* — toggle which duelist avatars are unlocked.
+- *Stats* — view and edit the save's tracked lifetime stats (duels played/won, cards traded, decks created, and more).
+- *Cards* — an accurate "X / 10027" owned-card counter (scanning the save's full card table, not just its used prefix), a bulk "set every currently-owned card's count" tool that leaves un-owned cards alone, a one-click Unlock All Cards that owns exactly the 10,027 real cards without touching unused save padding, and a search box to look up and unlock/set the count of one specific card by name.
 
-**Undo / redo.** Every edit — renames, duelist changes, copy/swap, clears, imports, drag-reorders, and deck editor changes — can be undone with `Ctrl+Z` and redone with `Ctrl+Y` (or `Ctrl+Shift+Z`), or via the top-bar buttons. `Ctrl+O` opens a save file and `Ctrl+S` saves it. Undo history resets whenever a save file is (re)loaded.
+**Undo / redo.** Every edit — renames, duelist changes, copy/swap, clears, imports, drag-reorders, and every Save Editor edit — can be undone with `Ctrl+Z` and redone with `Ctrl+Y` (or `Ctrl+Shift+Z`), or via the top-bar buttons. `Ctrl+O` opens a save file and `Ctrl+S` saves it. Undo history resets whenever a save file is (re)loaded.
 
 **Deck legality badges.** Each filled deck slot shows a colored dot: green for a deck within the 40–60 card Main-deck range (and within the save format's 60/15/15 caps) with no banlist violations, amber if the Main deck is under 40 cards, red if a section exceeds the save format's hard limits or contains a Forbidden card, more than one Limited copy, or more than two Semi-Limited copies of the same card (TCG banlist, from the bundled card database).
 
@@ -27,10 +33,10 @@ Built with C# / WPF on .NET 8. Every screen is declared entirely in XAML — no 
 ## Getting started
 
 1. Open `Yu-Gi-Oh LOTD LE Save Editor.slnx` in Visual Studio 2022 (17.8+) or JetBrains Rider. The [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) is required.
-2. Build and run (`F5`, or `dotnet run --project "Yu-Gi-Oh LOTD LE Save Editor.Wpf"` from the repo root).
-3. In the app, use **Open save** (`Ctrl+O`) to load a `.dat` save file, browse/edit decks and campaign data, then **Save file** (`Ctrl+S`) to write changes back.
+2. Build and run (`F5`, or `dotnet run --project "Yu-Gi-Oh LOTD LE Save Editor"` from the repo root).
+3. In the app, use **Open save** (`Ctrl+O`) to load a `.dat` save file, browse/edit decks and save data, then **Save file** (`Ctrl+S`) to write changes back.
 
-The card database (`Assets/cards/Cards.json`) and duelist portraits (`Assets/characters/*.png`) are shared with the legacy `Yu-Gi-Oh LOTD LE Deck Manager/` folder (kept in the repo only as the original WinForms port source — it isn't part of the active solution) and are embedded into the WPF app as build resources; no extra setup needed.
+The card database (`Assets/cards/Cards.json`) and duelist portraits (`Assets/characters/*.png`) live directly under the project's own `Assets/` folder and are embedded into the app as build resources — no extra setup needed.
 
 ### Offline mode
 
@@ -39,34 +45,39 @@ Settings → Offline mode skips fetching card art over the network; deck slots a
 ## Project structure
 
 ```
-Yu-Gi-Oh LOTD LE Save Editor.Wpf/
-├── Yu-Gi-Oh LOTD LE Save Editor.Wpf.csproj
+Yu-Gi-Oh LOTD LE Save Editor/
+├── Yu-Gi-Oh LOTD LE Save Editor.csproj
 ├── App.xaml(.cs)              ← App startup, merged theme/style resource dictionaries
 ├── MainWindow.xaml(.cs)        ← Top-level window: sidebar nav, top bar, undo/redo, file I/O, keyboard shortcuts, auto-backup
 ├── AppContext.cs                ← Global static services (save state, card DB, undo)
 │
 ├── Views/                       ← DeckSlotsView, DeckEditorView, CardSearchView, SaveEditorView, SettingsView
-├── Controls/                    ← Reusable windows/converters/view-models (OwnerPickerWindow, ImageViewerWindow, AppInputBox, AppMessageBox, tile view-models, geometry/brush converters)
+├── Controls/                    ← Reusable windows/converters/view-models (OwnerPickerWindow, ImageViewerWindow, AppInputBox, AppMessageBox, tile/stat/search-result view-models, geometry/brush converters)
 ├── Themes/                       ← MasterDuelTheme.xaml (fixed palette), Controls.xaml (shared styles)
 │
 ├── Models/
-│   ├── Save/                    ← SlotLayout, SlotIO, OwnerDatabase, CampaignSaveLayout, SaveSignatureFixer
+│   ├── Save/                    ← LotdSaveFormat, SlotLayout, SlotIO, OwnerDatabase, CampaignSaveLayout, MiscSaveLayout (DP/shop/battle-pack flags), CardCollectionLayout, StatsLayout, SaveSignatureFixer
 │   └── YDK/                     ← Card, Deck, CardDatabase, YDKReader/Writer
 │
 ├── Services/                     ← DeckLegalityChecker, UndoManager, AppState, CardImageProvider, PortraitProvider, and other helpers
 │
-└── Assets/                       ← Backgrounds, icons; cards/characters are linked in from the legacy project folder
+└── Assets/                       ← Backgrounds, icons, cards/Cards.json, characters/*.png
 ```
 
 ## How the save format works
 
-The relevant parts of `.dat` are documented in `Models/Save/SlotLayout.cs`: 32 fixed-size deck-slot blocks starting at a known offset, each holding a name, owner ID, Main/Extra/Side counts, and up to 90 card IDs (60 Main + 15 Extra + 15 Side), all little-endian. `SlotIO.cs` builds on that for reading/writing/copying/swapping/clearing whole slot blocks, and `SaveSignatureFixer.cs` patches whatever checksum/signature field the game expects before a save is written back to disk.
+`Models/Save/LotdSaveFormat.cs` centralizes the version-dependent offsets and sizes (deck slot count, card table size, real card count, stats count) for the two known save formats (`Lotd` and `LinkEvolution`). The other `Models/Save/*Layout.cs` files each own one region of the save:
 
-Card lookups go through `Models/YDK/CardDatabase.cs`, which maps between the game's own internal `LotdId` and the broader YGOPRODeck-style card data bundled in `Cards.json` (including TCG banlist status) — only cards with a known `LotdId` can actually be written into a save slot.
+- `SlotLayout.cs` / `SlotIO.cs` — 32 (or more, per version) fixed-size deck-slot blocks, each holding a name, owner ID, Main/Extra/Side counts, and up to 90 card IDs, all little-endian; `SaveSignatureFixer.cs` patches the save's checksum/signature before writing back to disk.
+- `CardCollectionLayout.cs` — one byte per card slot across the save's full card table (owned count 0–3 + a "seen" flag). The real card count (10,027 for LinkEvolution) is smaller than the table's full capacity (20,000), and real cards are scattered throughout that table rather than occupying a contiguous prefix — every scan or bulk operation here walks the full table and only uses the real card count as a display denominator, and per-card lookups go through `Card.LotdId`, which is confirmed to be the same index this class reads/writes.
+- `MiscSaveLayout.cs` — Duel Points, and the Shop Pack / Battle Pack unlock flag bits (each duelist and pack's exact bit was confirmed by diffing real before/after saves).
+- `CampaignSaveLayout.cs` — per-duel campaign completion state.
+- `StatsLayout.cs` — the save's ~40 tracked lifetime stats (duels played/won, cards traded, decks created, etc.), each an 8-byte counter at a fixed offset.
+
+Card lookups elsewhere go through `Models/YDK/CardDatabase.cs`, which maps between the game's own internal `LotdId` and the broader YGOPRODeck-style card data bundled in `Cards.json` (including TCG banlist status) — only cards with a known `LotdId` can actually be written into a save slot or the card collection table.
 
 ## Known limitations
 
 - No installer — run from source or a self-built binary.
 - Deck legality checks the TCG banlist only; there's no separate OCG/region setting.
 - Compiling requires a Windows machine with the .NET 8 SDK and the WPF (`Microsoft.NET.Sdk` + `UseWPF`) workload — there's no cross-platform build target.
-- The `Yu-Gi-Oh LOTD LE Deck Manager/` folder in this repo is the original WinForms build this app was ported from. It's no longer maintained or part of the build — its shared `Assets/` are still referenced by the WPF project, but its own `.csproj` isn't in the solution.
