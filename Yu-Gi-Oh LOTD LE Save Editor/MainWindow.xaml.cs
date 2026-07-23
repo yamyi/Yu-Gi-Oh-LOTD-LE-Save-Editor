@@ -236,21 +236,22 @@ public partial class MainWindow : Window
     }
 
     // ── Auto-backup ───────────────────────────────────────────────────────────
-    // Copies the .dat file to a numbered sibling backup the moment it's opened -
-    // before anything in this app has a chance to touch it - given how much
-    // manual byte-offset writing SlotIO/CampaignSaveLayout/etc. do directly
-    // against a save file. A failed backup (locked/read-only folder, out of
-    // disk space) shouldn't block opening the save itself, so this only ever
-    // logs and moves on rather than showing an error dialog.
+    // Copies the .dat file to a timestamped sibling backup the moment it's
+    // opened - before anything in this app has a chance to touch it - given
+    // how much manual byte-offset writing SlotIO/CampaignSaveLayout/etc. do
+    // directly against a save file. A failed backup (locked/read-only folder,
+    // out of disk space) shouldn't block opening the save itself, so this
+    // only ever logs and moves on rather than showing an error dialog.
     //
     // Backups live right next to the save file itself (e.g. "savegame.dat"
-    // gets "savegame.dat.bak_1", "savegame.dat.bak_2", ...) rather than under
-    // %LocalAppData% - changed 2026-07-23 per user request. bak_1 is always
-    // the most recent backup: each call rotates every existing bak_N up to
-    // bak_(N+1) (oldest, bak_MaxBackupsPerFile, is dropped first) and then
-    // writes the fresh copy as bak_1, so higher numbers are older - same
-    // "keep the last N" intent as the old timestamp-based scheme, just
-    // sequential instead of timestamped and colocated instead of centralized.
+    // gets "savegame.dat.bak_20260723_211932") rather than under
+    // %LocalAppData% - changed 2026-07-23 per user request. Switched back to
+    // timestamped names the same day (also per user request) instead of the
+    // bak_1/bak_2/... rotation scheme that briefly replaced it - a timestamp
+    // says at a glance when each backup was made instead of just its
+    // relative age, and sorts the same way lexicographically as
+    // chronologically, so pruning to the newest MaxBackupsPerFile is still a
+    // plain string sort.
     private const int MaxBackupsPerFile = 20;
 
     private static void BackupSaveFile(string path)
@@ -260,30 +261,34 @@ public partial class MainWindow : Window
             string? dir = Path.GetDirectoryName(path);
             if (string.IsNullOrEmpty(dir)) return; // no folder to place a sibling backup in
 
-            string BackupPath(int n) => $"{path}.bak_{n}";
+            string stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+            string backupPath = $"{path}.bak_{stamp}";
 
-            string oldest = BackupPath(MaxBackupsPerFile);
-            if (File.Exists(oldest))
+            // Reopening the same save twice within one second would otherwise
+            // collide on an identical timestamp - fall back to a numbered
+            // suffix rather than silently overwriting the earlier backup.
+            int n = 2;
+            while (File.Exists(backupPath))
             {
-                try { File.Delete(oldest); }
+                backupPath = $"{path}.bak_{stamp}_{n}";
+                n++;
+            }
+
+            File.Copy(path, backupPath, overwrite: false);
+            AppContext.State?.Log?.Invoke($"Backed up save to {Path.GetFileName(backupPath)}.");
+
+            // Keep only the most recent MaxBackupsPerFile backups for this
+            // save file, so the folder doesn't grow forever across many Open
+            // Save calls.
+            string fileName = Path.GetFileName(path);
+            var old = Directory.GetFiles(dir, $"{fileName}.bak_*")
+                .OrderByDescending(f => f)
+                .Skip(MaxBackupsPerFile);
+            foreach (string f in old)
+            {
+                try { File.Delete(f); }
                 catch { /* not worth failing the backup over a stale file that won't delete */ }
             }
-
-            // Walk from the second-oldest slot down to bak_1, freeing each
-            // destination right before it's needed (bak_MaxBackupsPerFile was
-            // just vacated above, so shifting bak_(Max-1) into it is always safe,
-            // and so on down the chain).
-            for (int i = MaxBackupsPerFile - 1; i >= 1; i--)
-            {
-                string from = BackupPath(i);
-                if (!File.Exists(from)) continue;
-                try { File.Move(from, BackupPath(i + 1), overwrite: true); }
-                catch { /* leave it - a failed rotation step just means that slot repeats next time */ }
-            }
-
-            string backupPath = BackupPath(1);
-            File.Copy(path, backupPath, overwrite: true);
-            AppContext.State?.Log?.Invoke($"Backed up save to {Path.GetFileName(backupPath)}.");
         }
         catch
         {
