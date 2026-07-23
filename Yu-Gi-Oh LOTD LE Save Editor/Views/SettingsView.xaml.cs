@@ -2,16 +2,18 @@ using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
+using YuGiOhSaveEditor.Controls;
 using YuGiOhSaveEditor.Services;
 
 namespace YuGiOhSaveEditor.Views;
 
 /// <summary>
 /// App-wide preferences page. Everything on screen (OfflineModeCheckBox,
-/// CacheSizeText, ClearCacheButton, VersionText) is declared once in
-/// SettingsView.xaml; this class only ever reads/writes
+/// CacheSizeText, OpenCacheFolderButton, ClearCacheButton, VersionText) is
+/// declared once in SettingsView.xaml; this class only ever reads/writes
 /// AppContext.State.IsOfflineMode, calls CardImageProvider's cache helpers,
-/// and sets TextBlock/CheckBox properties - no controls are built here.
+/// opens the cache folder via UrlLauncher, and sets TextBlock/CheckBox
+/// properties - no controls are built here.
 /// </summary>
 public partial class SettingsView : UserControl
 {
@@ -69,6 +71,23 @@ public partial class SettingsView : UserControl
     {
         if (_suppressEvents) return;
         AppContext.State.IsOfflineMode = OfflineModeCheckBox.IsChecked == true;
+    }
+
+    /// <summary>Opens the on-disk card image cache folder in Explorer -
+    /// CardImageProvider.GetCacheDirectory() creates it first if it doesn't
+    /// exist yet (e.g. offline mode has been on since first launch), so this
+    /// always has somewhere real to open. Same UrlLauncher.TryOpen helper
+    /// CardSearchView/DeckEditorView use for "VIEW ON YGOPRODECK" - it's just
+    /// a Process.Start(UseShellExecute: true) wrapper, which opens a folder
+    /// path in Explorer exactly the same way it opens a URL in a browser.</summary>
+    private void OpenCacheFolderButton_Click(object sender, RoutedEventArgs e)
+    {
+        string dir = CardImageProvider.GetCacheDirectory();
+        if (!UrlLauncher.TryOpen(dir))
+        {
+            AppMessageBox.Show(Window.GetWindow(this), "Couldn't open the cache folder.",
+                "Open Cache Folder", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     private void ClearCacheButton_Click(object sender, RoutedEventArgs e)

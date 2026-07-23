@@ -9,9 +9,15 @@ namespace YuGiOhSaveEditor.Services
     /// Downloads and caches card artwork from Card.ImageUrl / SmallImageUrl.
     /// Results are cached in memory for the running session and on disk
     /// (under %LocalAppData%) so images don't have to be re-downloaded between
-    /// runs. Callers are expected to only invoke this when online mode is
-    /// enabled (see AppState.IsOfflineMode) — this class does not check that
-    /// itself, it just fetches whatever URL it's given.
+    /// runs. Callers should call this unconditionally, online or offline -
+    /// this class itself decides whether the network is allowed (see
+    /// AppState.IsOfflineMode): an on-disk cache hit is always returned
+    /// regardless of offline mode, and only a genuine cache miss falls back
+    /// to "return null without downloading" while offline. This way a card
+    /// whose art was already cached during an earlier online session still
+    /// shows up even after switching to Offline Mode - changed 2026-07-23,
+    /// previously offline mode skipped this class entirely at every call
+    /// site, which also hid already-cached art for no reason.
     /// Returns BitmapImage (WPF's native imaging type) instead of the WinForms
     /// build's System.Drawing.Bitmap — bind straight to an Image.Source.
     /// </summary>
@@ -54,9 +60,25 @@ namespace YuGiOhSaveEditor.Services
                 Directory.CreateDirectory(cacheDir);
                 string cachePath = Path.Combine(cacheDir, cacheKey + ".jpg");
 
-                byte[] bytes = File.Exists(cachePath)
-                    ? await File.ReadAllBytesAsync(cachePath, ct)
-                    : await DownloadAndCacheAsync(url, cachePath, ct);
+                byte[] bytes;
+                if (File.Exists(cachePath))
+                {
+                    bytes = await File.ReadAllBytesAsync(cachePath, ct);
+                }
+                else if (AppContext.State.IsOfflineMode)
+                {
+                    // Nothing on disk and the network isn't allowed right now -
+                    // don't memoize this as a permanent result (same as the
+                    // catch block below), so a later call - e.g. after the
+                    // user turns Offline Mode back off - retries instead of
+                    // being stuck returning null for the rest of the session.
+                    cache.TryRemove(cacheKey, out _);
+                    return null;
+                }
+                else
+                {
+                    bytes = await DownloadAndCacheAsync(url, cachePath, ct);
+                }
 
                 using var ms = new MemoryStream(bytes);
                 var bmp = new BitmapImage();
@@ -101,6 +123,16 @@ namespace YuGiOhSaveEditor.Services
                 catch { /* file could vanish mid-enumeration; just skip it */ }
             }
             return total;
+        }
+
+        /// <summary>Returns the on-disk cache folder, creating it first if it
+        /// doesn't exist yet - so the Settings page's "Open Cache Folder"
+        /// button always has somewhere real to open, even before any artwork
+        /// has ever been downloaded.</summary>
+        public static string GetCacheDirectory()
+        {
+            Directory.CreateDirectory(cacheDir);
+            return cacheDir;
         }
 
         /// <summary>Deletes every cached image on disk and forgets the

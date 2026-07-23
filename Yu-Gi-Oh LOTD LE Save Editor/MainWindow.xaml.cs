@@ -236,42 +236,54 @@ public partial class MainWindow : Window
     }
 
     // ── Auto-backup ───────────────────────────────────────────────────────────
-    // Copies the .dat file to a timestamped backup the moment it's opened -
+    // Copies the .dat file to a numbered sibling backup the moment it's opened -
     // before anything in this app has a chance to touch it - given how much
     // manual byte-offset writing SlotIO/CampaignSaveLayout/etc. do directly
     // against a save file. A failed backup (locked/read-only folder, out of
     // disk space) shouldn't block opening the save itself, so this only ever
     // logs and moves on rather than showing an error dialog.
+    //
+    // Backups live right next to the save file itself (e.g. "savegame.dat"
+    // gets "savegame.dat.bak_1", "savegame.dat.bak_2", ...) rather than under
+    // %LocalAppData% - changed 2026-07-23 per user request. bak_1 is always
+    // the most recent backup: each call rotates every existing bak_N up to
+    // bak_(N+1) (oldest, bak_MaxBackupsPerFile, is dropped first) and then
+    // writes the fresh copy as bak_1, so higher numbers are older - same
+    // "keep the last N" intent as the old timestamp-based scheme, just
+    // sequential instead of timestamped and colocated instead of centralized.
     private const int MaxBackupsPerFile = 20;
 
     private static void BackupSaveFile(string path)
     {
         try
         {
-            string backupDir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "Yu-Gi-Oh LOTD LE Deck Editor", "Backups");
-            Directory.CreateDirectory(backupDir);
+            string? dir = Path.GetDirectoryName(path);
+            if (string.IsNullOrEmpty(dir)) return; // no folder to place a sibling backup in
 
-            string baseName = Path.GetFileNameWithoutExtension(path);
-            string ext = Path.GetExtension(path);
-            string stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-            string backupPath = Path.Combine(backupDir, $"{baseName}_{stamp}{ext}");
+            string BackupPath(int n) => $"{path}.bak_{n}";
 
-            File.Copy(path, backupPath, overwrite: false);
-            AppContext.State?.Log?.Invoke($"Backed up save to {Path.GetFileName(backupPath)}.");
-
-            // Keep only the most recent MaxBackupsPerFile backups for this
-            // save file name, so the folder doesn't grow forever across
-            // many Open Save calls.
-            var old = Directory.GetFiles(backupDir, $"{baseName}_*{ext}")
-                .OrderByDescending(f => f)
-                .Skip(MaxBackupsPerFile);
-            foreach (string f in old)
+            string oldest = BackupPath(MaxBackupsPerFile);
+            if (File.Exists(oldest))
             {
-                try { File.Delete(f); }
+                try { File.Delete(oldest); }
                 catch { /* not worth failing the backup over a stale file that won't delete */ }
             }
+
+            // Walk from the second-oldest slot down to bak_1, freeing each
+            // destination right before it's needed (bak_MaxBackupsPerFile was
+            // just vacated above, so shifting bak_(Max-1) into it is always safe,
+            // and so on down the chain).
+            for (int i = MaxBackupsPerFile - 1; i >= 1; i--)
+            {
+                string from = BackupPath(i);
+                if (!File.Exists(from)) continue;
+                try { File.Move(from, BackupPath(i + 1), overwrite: true); }
+                catch { /* leave it - a failed rotation step just means that slot repeats next time */ }
+            }
+
+            string backupPath = BackupPath(1);
+            File.Copy(path, backupPath, overwrite: true);
+            AppContext.State?.Log?.Invoke($"Backed up save to {Path.GetFileName(backupPath)}.");
         }
         catch
         {

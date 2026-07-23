@@ -30,6 +30,7 @@
         <controls:RarityBrushConverter x:Key="RarityBrushConverter" />
         <controls:BanIconConverter x:Key="BanIconConverter" />
         <controls:BanStatusBrushConverter x:Key="BanStatusBrushConverter" />
+        <controls:NullToVisibilityConverter x:Key="NullToVisibilityConverter" />
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
 
         <!-- ── Card List tile (right panel ListBox) ─────────────────────────── -->
@@ -58,6 +59,13 @@
                 </Border.Style>
                 <Grid>
                     <Image Source="{Binding Image}" Stretch="UniformToFill" />
+                    <!-- Offline mode (or a failed download) leaves Image null -
+                         without this, the tile had nothing on it identifying
+                         the card besides a bare rarity/ban badge. -->
+                    <TextBlock Text="{Binding Card.Name}" Visibility="{Binding Image, Converter={StaticResource NullToVisibilityConverter}}"
+                               FontFamily="Segoe UI" FontSize="9" FontWeight="SemiBold" TextWrapping="Wrap"
+                               TextAlignment="Center" Foreground="{StaticResource TextPrimaryBrush}"
+                               VerticalAlignment="Center" HorizontalAlignment="Center" Margin="4" />
                     <Border Background="{Binding RarityTier, Converter={StaticResource RarityBrushConverter}}"
                             Width="18" Height="15" CornerRadius="2"
                             HorizontalAlignment="Left" VerticalAlignment="Top" Margin="3">
@@ -130,6 +138,13 @@
                 </Border.Triggers>
                 <Grid>
                     <Image Source="{Binding Image}" Stretch="UniformToFill" />
+                    <!-- Offline mode (or a failed download) leaves Image null -
+                         without this, the tile had nothing on it identifying
+                         the card besides a bare rarity/ban badge. -->
+                    <TextBlock Text="{Binding Card.Name}" Visibility="{Binding Image, Converter={StaticResource NullToVisibilityConverter}}"
+                               FontFamily="Segoe UI" FontSize="7" FontWeight="SemiBold" TextWrapping="Wrap"
+                               TextAlignment="Center" Foreground="{StaticResource TextPrimaryBrush}"
+                               VerticalAlignment="Center" HorizontalAlignment="Center" Margin="3" />
                     <Border Background="{Binding RarityTier, Converter={StaticResource RarityBrushConverter}}"
                             Width="15" Height="13" CornerRadius="2"
                             HorizontalAlignment="Left" VerticalAlignment="Top" Margin="2">

@@ -26,7 +26,7 @@ Built with C# / WPF on .NET 8. Every screen is declared entirely in XAML — no 
 
 **Deck legality badges.** Each filled deck slot shows a colored dot: green for a deck within the 40–60 card Main-deck range (and within the save format's 60/15/15 caps) with no banlist violations, amber if the Main deck is under 40 cards, red if a section exceeds the save format's hard limits or contains a Forbidden card, more than one Limited copy, or more than two Semi-Limited copies of the same card (TCG banlist, from the bundled card database).
 
-**Auto-backup.** Opening a save file automatically copies it to a timestamped backup under `%LocalAppData%\Yu-Gi-Oh LOTD LE Deck Editor\Backups` before anything touches it, keeping the most recent 20 backups per save file name.
+**Auto-backup.** Opening a save file automatically copies it to a numbered backup (`savegame.dat.bak_1`, `savegame.dat.bak_2`, ...) right next to the save file before anything touches it — `bak_1` is always the most recent, and the oldest of the last 20 backups is dropped as new ones are made.
 
 **Settings.** Toggle Offline Mode (skips fetching card art over the network — Deck Editor and Card Search fall back to text-only cards), view and clear the on-disk card image cache, and see app version/about info.
 
@@ -40,7 +40,7 @@ The card database (`Assets/cards/Cards.json`) and duelist portraits (`Assets/cha
 
 ### Offline mode
 
-Settings → Offline mode skips fetching card art over the network; deck slots and card search fall back to text-only cards (name/type/ATK/DEF). Useful without a network connection or to save bandwidth.
+Settings → Offline mode stops the app from downloading any new card art over the network. Art that's already cached on disk from an earlier online session still displays normally; only cards with no cached art fall back to a text label (name) in place of the image. Useful without a network connection or to save bandwidth.
 
 ## Project structure
 

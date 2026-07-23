@@ -139,8 +139,10 @@ public partial class CardSearchView : UserControl
         {
             var vm = new CardTileViewModel(card);
             ResultCards.Add(vm);
-            if (!AppContext.State.IsOfflineMode)
-                _ = vm.LoadImageAsync(small: true);
+            // Always request the image - CardImageProvider itself decides
+            // whether Offline Mode allows a network fetch, but an on-disk
+            // cache hit from an earlier online session should still show up.
+            _ = vm.LoadImageAsync(small: true);
         }
 
         ResultCountText.Text = list.Count == ResultCap
@@ -195,12 +197,12 @@ public partial class CardSearchView : UserControl
         ViewOnYgoprodeckButton.IsEnabled = !string.IsNullOrWhiteSpace(card.YgoprodeckUrl);
         PreviewImage.Source = null;
 
-        if (!AppContext.State.IsOfflineMode)
-        {
-            var image = await CardImageProvider.GetImageAsync(card, small: false);
-            if (_previewCard == card) // selection may have moved on while this was loading
-                PreviewImage.Source = image;
-        }
+        // Always request the image - CardImageProvider itself decides
+        // whether Offline Mode allows a network fetch, but an on-disk cache
+        // hit from an earlier online session should still show up.
+        var image = await CardImageProvider.GetImageAsync(card, small: false);
+        if (_previewCard == card) // selection may have moved on while this was loading
+            PreviewImage.Source = image;
     }
 
     /// <summary>Same optional-field collapse helper as DeckEditorView -

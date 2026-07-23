@@ -10,7 +10,8 @@
         DeckEditorView/CardSearchView's image-loading calls, but nothing
         ever set it until this page existed) and the on-disk card image
         cache CardImageProvider maintains under %LocalAppData% (a live size
-        readout plus a Clear Cache button). Everything here is declared
+        readout, an Open Cache Folder button, and a Clear Cache button).
+        Everything here is declared
         once; SettingsView.xaml.cs only ever flips
         AppContext.State.IsOfflineMode, deletes files in an already-existing
         directory, and sets TextBlock text - no runtime control creation.
@@ -63,11 +64,15 @@
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <TextBlock x:Name="CacheSizeText" Grid.Column="0" Text="Cache size: calculating..."
                                        FontFamily="Segoe UI" FontSize="12" Foreground="{StaticResource TextPrimaryBrush}"
                                        VerticalAlignment="Center" />
-                            <Button x:Name="ClearCacheButton" Grid.Column="1" Content="CLEAR CACHE" Width="160"
+                            <Button x:Name="OpenCacheFolderButton" Grid.Column="1" Content="OPEN CACHE FOLDER" Width="160"
+                                    Margin="0,0,8,0"
+                                    Style="{StaticResource SecondaryButtonStyle}" Click="OpenCacheFolderButton_Click" />
+                            <Button x:Name="ClearCacheButton" Grid.Column="2" Content="CLEAR CACHE" Width="160"
                                     Style="{StaticResource SecondaryButtonStyle}" Click="ClearCacheButton_Click" />
                         </Grid>
                     </StackPanel>

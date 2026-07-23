@@ -195,8 +195,10 @@ public partial class DeckEditorView : UserControl, INotifyPropertyChanged
 
             var vm = new CardTileViewModel(card);
             target.Add(vm);
-            if (!AppContext.State.IsOfflineMode)
-                _ = vm.LoadImageAsync(small: true);
+            // Always request the image - CardImageProvider itself decides
+            // whether Offline Mode allows a network fetch, but an on-disk
+            // cache hit from an earlier online session should still show up.
+            _ = vm.LoadImageAsync(small: true);
         }
     }
 
@@ -259,8 +261,10 @@ public partial class DeckEditorView : UserControl, INotifyPropertyChanged
         {
             var vm = new CardTileViewModel(card);
             CardListResults.Add(vm);
-            if (!AppContext.State.IsOfflineMode)
-                _ = vm.LoadImageAsync(small: true);
+            // Always request the image - CardImageProvider itself decides
+            // whether Offline Mode allows a network fetch, but an on-disk
+            // cache hit from an earlier online session should still show up.
+            _ = vm.LoadImageAsync(small: true);
         }
 
         ResultCountText.Text = list.Count == 200 ? "200+ cards - refine your search" : $"{list.Count} card{(list.Count == 1 ? "" : "s")}";
@@ -419,12 +423,12 @@ public partial class DeckEditorView : UserControl, INotifyPropertyChanged
         ViewOnYgoprodeckButton.IsEnabled = !string.IsNullOrWhiteSpace(card.YgoprodeckUrl);
         PreviewImage.Source = null;
 
-        if (!AppContext.State.IsOfflineMode)
-        {
-            var image = await CardImageProvider.GetImageAsync(card, small: false);
-            if (_previewCard == card) // selection may have moved on while this was loading
-                PreviewImage.Source = image;
-        }
+        // Always request the image - CardImageProvider itself decides
+        // whether Offline Mode allows a network fetch, but an on-disk cache
+        // hit from an earlier online session should still show up.
+        var image = await CardImageProvider.GetImageAsync(card, small: false);
+        if (_previewCard == card) // selection may have moved on while this was loading
+            PreviewImage.Source = image;
     }
 
     /// <summary>Shared helper for the preview panel's optional fields
@@ -514,8 +518,10 @@ public partial class DeckEditorView : UserControl, INotifyPropertyChanged
 
         var vm = new CardTileViewModel(card);
         target.Add(vm);
-        if (!AppContext.State.IsOfflineMode)
-            _ = vm.LoadImageAsync(small: true);
+        // Always request the image - CardImageProvider itself decides
+        // whether Offline Mode allows a network fetch, but an on-disk cache
+        // hit from an earlier online session should still show up.
+        _ = vm.LoadImageAsync(small: true);
     }
 
     // ── Drag & drop ──────────────────────────────────────────────────────────
@@ -645,8 +651,10 @@ public partial class DeckEditorView : UserControl, INotifyPropertyChanged
                 // out of it only ever adds a fresh instance (same as
                 // AddCardToDeck); the source list itself is never touched.
                 moved = new CardTileViewModel(_draggedVm.Card);
-                if (!AppContext.State.IsOfflineMode)
-                    _ = moved.LoadImageAsync(small: true);
+                // Always request the image - CardImageProvider itself decides
+                // whether Offline Mode allows a network fetch, but an on-disk
+                // cache hit from an earlier online session should still show up.
+                _ = moved.LoadImageAsync(small: true);
             }
             else
             {
