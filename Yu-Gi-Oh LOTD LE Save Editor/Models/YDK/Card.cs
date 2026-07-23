@@ -83,6 +83,16 @@ namespace YuGiOhSaveEditor.Services
         [JsonPropertyName("banlist_info")]
         public BanlistInfo? BanlistInfo { get; init; }
 
+        // ── Card Shop (LOTD:LE-specific, not part of ygoprodeck's own data) ───────
+        // Which of the game's own booster packs sell this card and at what
+        // pack-local rarity (Common/Rare - this shop has no other tiers).
+        // A card can be sold in more than one pack, hence a list rather than
+        // a single field. Added 2026-07-24 from a fan-compiled Card Shop
+        // list; null/empty means the card wasn't found in that source (either
+        // it isn't shop-obtainable, or the source had no clean match for it).
+        [JsonPropertyName("shop_packs")]
+        public List<ShopPackEntry>? ShopPacks { get; init; }
+
         // ── Convenience helpers ───────────────────────────────────────────────────
         [JsonIgnore]
         public bool IsMonster => Type.Contains("Monster", StringComparison.OrdinalIgnoreCase);
@@ -154,5 +164,15 @@ namespace YuGiOhSaveEditor.Services
 
         [JsonPropertyName("ban_goat")]
         public string? BanGoat { get; init; }
+    }
+
+    // ── ShopPackEntry ─────────────────────────────────────────────────────────────
+    public sealed class ShopPackEntry
+    {
+        [JsonPropertyName("pack")]
+        public string Pack { get; init; } = string.Empty;
+
+        [JsonPropertyName("rarity")]
+        public string Rarity { get; init; } = string.Empty;
     }
 }

@@ -287,6 +287,8 @@
                             <TextBlock x:Name="PreviewBanStatus" FontFamily="Segoe UI" FontSize="11" FontWeight="Bold"
                                        Foreground="{Binding Text, RelativeSource={RelativeSource Self}, Converter={StaticResource BanStatusBrushConverter}}"
                                        TextWrapping="Wrap" Margin="0,4,0,0" />
+                            <TextBlock x:Name="PreviewShop" FontFamily="Segoe UI" FontSize="11"
+                                       Foreground="{StaticResource TextMutedBrush}" TextWrapping="Wrap" Margin="0,4,0,0" />
 
                             <TextBlock x:Name="PreviewDesc" FontFamily="Segoe UI" FontSize="11.5" TextWrapping="Wrap"
                                        Foreground="{StaticResource TextDescriptionBrush}" Margin="0,10,0,0" />

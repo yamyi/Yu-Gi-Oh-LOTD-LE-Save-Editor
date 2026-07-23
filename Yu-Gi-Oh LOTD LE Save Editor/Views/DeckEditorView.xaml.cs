@@ -417,6 +417,7 @@ public partial class DeckEditorView : UserControl, INotifyPropertyChanged
         SetOptionalLine(PreviewScale, CardPreviewFormatter.Scale(card));
         SetOptionalLine(PreviewLinkMarkers, CardPreviewFormatter.LinkMarkers(card));
         SetOptionalLine(PreviewBanStatus, CardPreviewFormatter.BanStatus(card));
+        SetOptionalLine(PreviewShop, CardPreviewFormatter.ShopInfo(card));
 
         PreviewDesc.Text = card.Desc;
         AddToDeckButton.IsEnabled = true;
@@ -457,6 +458,7 @@ public partial class DeckEditorView : UserControl, INotifyPropertyChanged
         SetOptionalLine(PreviewScale, string.Empty);
         SetOptionalLine(PreviewLinkMarkers, string.Empty);
         SetOptionalLine(PreviewBanStatus, string.Empty);
+        SetOptionalLine(PreviewShop, string.Empty);
         PreviewDesc.Text = string.Empty;
         PreviewImage.Source = null;
         AddToDeckButton.IsEnabled = false;

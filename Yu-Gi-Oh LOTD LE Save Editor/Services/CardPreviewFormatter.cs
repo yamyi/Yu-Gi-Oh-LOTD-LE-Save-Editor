@@ -50,4 +50,15 @@ public static class CardPreviewFormatter
     /// field is real-world TCG/OCG data, not this format's list, and this
     /// app has no OCG-specific mode to justify showing it alongside).</summary>
     public static string BanStatus(Card card) => LotdBanlist.GetStatus(card.LotdId) ?? "Unlimited";
+
+    /// <summary>Which Card Shop booster pack(s) sell this card and at what
+    /// pack-local rarity, e.g. "Shop: Yugi (Rare)" or, for a card sold in
+    /// more than one pack, "Shop: Grandpa Muto (Common), Yugi (Rare)".
+    /// Empty for the small number of cards with no shop_packs data (see
+    /// Card.ShopPacks' doc comment) - callers collapse the TextBlock in that
+    /// case, same as every other optional preview line.</summary>
+    public static string ShopInfo(Card card) =>
+        card.ShopPacks is { Count: > 0 }
+            ? $"Shop: {string.Join(", ", card.ShopPacks.Select(p => $"{p.Pack} ({p.Rarity})"))}"
+            : string.Empty;
 }

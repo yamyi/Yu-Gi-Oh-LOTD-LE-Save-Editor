@@ -192,6 +192,7 @@ public partial class CardSearchView : UserControl
         SetOptionalLine(PreviewScale, CardPreviewFormatter.Scale(card));
         SetOptionalLine(PreviewLinkMarkers, CardPreviewFormatter.LinkMarkers(card));
         SetOptionalLine(PreviewBanStatus, CardPreviewFormatter.BanStatus(card));
+        SetOptionalLine(PreviewShop, CardPreviewFormatter.ShopInfo(card));
 
         PreviewDesc.Text = card.Desc;
         ViewOnYgoprodeckButton.IsEnabled = !string.IsNullOrWhiteSpace(card.YgoprodeckUrl);

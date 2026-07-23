@@ -40,6 +40,8 @@ Built with C# / WPF on .NET 8. Every screen is declared entirely in XAML — no 
 
 The card database (`Assets/cards/Cards.json`) and duelist portraits (`Assets/characters/*.png`) live directly under the project's own `Assets/` folder and are embedded into the app as build resources — no extra setup needed.
 
+Each card entry also carries a `shop_packs` array — which of the game's own Card Shop booster packs (Grandpa Muto, Yugi, Seto Kaiba, Yusei Fudo, Ai, etc.) sell that card, and at what pack-specific rarity (`Common` or `Rare` — the shop system only has those two tiers, separate from any real-world TCG rarity). A card can appear in more than one pack, so it's a list rather than a single field, e.g. `"shop_packs": [{"pack": "Yugi", "rarity": "Rare"}]`. Sourced from a fan-compiled [Card Shop list](https://gamefaqs.gamespot.com/pc/280088-yu-gi-oh-legacy-of-the-duelist-link-evolution/faqs/79850) covering all 33 packs; 10,025 of 10,027 cards matched cleanly (`Synchro Chase` and `The Unhappy Girl` have no confirmed pack in that source, so their card preview just omits the line). Both the Deck Editor and Card Search preview panels show it as a "Shop: Pack Name (Rarity)" line right under the ban status.
+
 ### Offline mode
 
 Settings → Offline mode stops the app from downloading any new card art over the network. Art that's already cached on disk (including from a Warm Cache run) still displays normally; only cards with no cached art fall back to a text label in place of the image. Useful without a network connection or to save bandwidth — use **Warm Cache** in Settings beforehand to pre-download everything.
