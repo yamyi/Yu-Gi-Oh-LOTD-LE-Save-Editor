@@ -83,3 +83,16 @@ Card lookups elsewhere go through `Models/YDK/CardDatabase.cs`, which maps betwe
 - No installer — run from source or a self-built binary.
 - Deck legality checks the LotD banlist only; there's no separate TCG/OCG/region setting.
 - Compiling requires a Windows machine with the .NET 8 SDK and the WPF (`Microsoft.NET.Sdk` + `UseWPF`) workload — there's no cross-platform build target.
+
+## Licensing
+
+This project's own source code is MIT-licensed — see [`LICENSE`](LICENSE). Use, fork, or modify it freely, including commercially, as long as the copyright notice stays attached.
+
+That license covers the code only. Two things bundled in `Assets/` are not original work and aren't covered by it:
+
+- `Assets/cards/Cards.json` — card names, text, and stats sourced from [YGOPRODeck](https://ygoprodeck.com/)'s API.
+- `Assets/characters/*.png` — duelist portraits extracted from the game itself.
+
+Card data, card images, and all *Yu-Gi-Oh!* trademarks/copyrights belong to **4K Media Inc., a subsidiary of Konami Digital Entertainment, Inc.** This is an unofficial fan-made tool — it is not produced by, endorsed by, or affiliated with Konami, 4K Media, or YGOPRODeck. Don't redistribute those two assets outside of this tool, and if you fork the project for anything beyond personal use, swap in your own card/portrait data or keep the same non-affiliation disclaimer.
+
+(Not legal advice — if you plan to distribute this beyond personal/hobby use, it's worth having Konami's IP policies and YGOPRODeck's API terms in front of you directly.)
