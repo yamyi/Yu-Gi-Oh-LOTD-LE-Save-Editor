@@ -26,9 +26,11 @@ Built with C# / WPF on .NET 8. Every screen is declared entirely in XAML — no 
 
 **Deck legality badges.** Each filled deck slot shows a colored dot: green for a deck within the 40–60 card Main-deck range (and within the save format's 60/15/15 caps) with no banlist violations, amber if the Main deck is under 40 cards, red if a section exceeds the save format's hard limits or contains a Forbidden card, more than one Limited copy, or more than two Semi-Limited copies of the same card (LotD banlist, from the bundled card database).
 
-**Auto-backup.** Opening a save file automatically copies it to a backup before anything touches it, keeping the most recent 20 backups per save file name.
+**Auto-backup & restore.** Opening a save file automatically copies it to a timestamped backup (`savegame.dat.bak_20260723_211932`) right next to the save file before anything touches it, keeping the most recent 20 backups per save file name. The top bar's **Restore Backup** button lists those backups and loads whichever one you pick back into the editor — nothing is written to disk until you Save, and the restore itself is a normal undoable edit (`Ctrl+Z` brings back what was open before).
 
-**Settings.** Toggle Offline Mode (skips fetching card art over the network — Deck Editor and Card Search fall back to text-only cards), view and clear the on-disk card image cache, and see app version/about info.
+**Drag-and-drop open.** Drop a `.dat` save file anywhere on the window to open it, same as **Open Save**.
+
+**Settings.** Toggle Offline Mode (already-cached card art still displays offline; only genuinely uncached cards fall back to a text label — and a card preview specifically falls back further to a stretched-up thumbnail if that's all that's cached, rather than showing nothing). The on-disk image cache itself is also optional — turn it off and every image request re-contacts ygoprodeck fresh each time instead of ever touching disk — and, while it's on, an optional max size (in MB) evicts the least-recently-viewed art first once the cache grows past it. **Warm Cache** pre-downloads art for the whole card database before you go offline (confirms first): thumbnails only by default (~150 MB, covers every grid in the app), with an opt-in checkbox to also include full-size preview art (~1761 MB total). The panel also has Open Cache Folder / Clear Cache. Offline Mode, the disk cache toggle, and the cache size limit are all saved automatically and restored the next time the app opens. Version/about info is at the bottom.
 
 ## Getting started
 
@@ -40,7 +42,7 @@ The card database (`Assets/cards/Cards.json`) and duelist portraits (`Assets/cha
 
 ### Offline mode
 
-Settings → Offline mode skips fetching card art over the network; deck slots and card search fall back to text-only cards (name/type/ATK/DEF). Useful without a network connection or to save bandwidth.
+Settings → Offline mode stops the app from downloading any new card art over the network. Art that's already cached on disk (including from a Warm Cache run) still displays normally; only cards with no cached art fall back to a text label in place of the image. Useful without a network connection or to save bandwidth — use **Warm Cache** in Settings beforehand to pre-download everything.
 
 ## Project structure
 

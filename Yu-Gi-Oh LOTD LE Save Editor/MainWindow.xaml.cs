@@ -219,81 +219,112 @@ public partial class MainWindow : Window
         };
         if (dlg.ShowDialog(this) != true) return;
 
-        if (!File.Exists(dlg.FileName) || Path.GetExtension(dlg.FileName).ToLowerInvariant() != ".dat")
+        OpenSaveFile(dlg.FileName);
+    }
+
+    // ── Drag-and-drop open ────────────────────────────────────────────────────
+    // Dropping a .dat file anywhere on the window opens it, same as OPEN SAVE
+    // - AllowDrop/DragEnter/DragOver/Drop are wired on the Window itself in
+    // MainWindow.xaml, not on any one page, so this works no matter which
+    // page happens to be showing. DragEnter and DragOver share one handler
+    // (WPF re-raises DragOver continuously while hovering, and the "is this a
+    // droppable .dat" check never changes mid-drag) - only Drop needs its own.
+    private void Window_DragEnter(object sender, DragEventArgs e)
+    {
+        e.Effects = TryGetDroppedDatPath(e) != null ? DragDropEffects.Copy : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void Window_Drop(object sender, DragEventArgs e)
+    {
+        string? path = TryGetDroppedDatPath(e);
+        e.Handled = true;
+        if (path != null) OpenSaveFile(path);
+    }
+
+    /// <summary>Null unless the drag payload is exactly one file and it has a
+    /// .dat extension - multi-file drops and non-.dat files (e.g. a .ydk
+    /// meant for Deck Editor/Deck Slots' own import, or a stray image) are
+    /// left alone rather than guessing which one was intended.</summary>
+    private static string? TryGetDroppedDatPath(DragEventArgs e)
+    {
+        if (!e.Data.GetDataPresent(DataFormats.FileDrop)) return null;
+        if (e.Data.GetData(DataFormats.FileDrop) is not string[] { Length: 1 } files) return null;
+
+        string path = files[0];
+        return Path.GetExtension(path).Equals(".dat", StringComparison.OrdinalIgnoreCase) ? path : null;
+    }
+
+    /// <summary>Shared by the Open Save dialog, drag-and-drop, and (once a
+    /// save is already open) the Restore Backup flow's implicit "load these
+    /// bytes as the current save" step - validates the path, backs up the
+    /// old on-disk copy, and loads it. Not used by RestoreFromBackup itself,
+    /// which intentionally does NOT re-backup or touch _currentPath (see its
+    /// own doc comment).</summary>
+    private void OpenSaveFile(string path)
+    {
+        if (!File.Exists(path) || Path.GetExtension(path).ToLowerInvariant() != ".dat")
         {
             AppMessageBox.Show(this, "Please select a valid .dat save file.", Title,
                 MessageBoxButton.OK, MessageBoxImage.Error);
             return;
         }
 
-        _currentPath = dlg.FileName;
-        SaveFileLabel.Text = Path.GetFileName(dlg.FileName);
+        _currentPath = path;
+        SaveFileLabel.Text = Path.GetFileName(path);
 
-        BackupSaveFile(_currentPath);
+        SaveBackup.Create(_currentPath);
 
         AppContext.CardDb.Load();
         LoadSaveSlots();
     }
 
-    // ── Auto-backup ───────────────────────────────────────────────────────────
-    // Copies the .dat file to a timestamped sibling backup the moment it's
-    // opened - before anything in this app has a chance to touch it - given
-    // how much manual byte-offset writing SlotIO/CampaignSaveLayout/etc. do
-    // directly against a save file. A failed backup (locked/read-only folder,
-    // out of disk space) shouldn't block opening the save itself, so this
-    // only ever logs and moves on rather than showing an error dialog.
-    //
-    // Backups live right next to the save file itself (e.g. "savegame.dat"
-    // gets "savegame.dat.bak_20260723_211932") rather than under
-    // %LocalAppData% - changed 2026-07-23 per user request. Switched back to
-    // timestamped names the same day (also per user request) instead of the
-    // bak_1/bak_2/... rotation scheme that briefly replaced it - a timestamp
-    // says at a glance when each backup was made instead of just its
-    // relative age, and sorts the same way lexicographically as
-    // chronologically, so pruning to the newest MaxBackupsPerFile is still a
-    // plain string sort.
-    private const int MaxBackupsPerFile = 20;
-
-    private static void BackupSaveFile(string path)
+    // ── Restore backup ───────────────────────────────────────────────────────
+    // "RESTORE BACKUP" in the top bar opens RestoreBackupPicker over whatever
+    // save is currently open (see Services.SaveBackup for how backups are
+    // named/found) and, if the user picks one, loads its bytes into the
+    // editor the same way any other Save Editor mutation works: Undo.Snapshot
+    // before the change, then the same refresh sequence Undo/Redo itself uses
+    // (AfterUndoRedo) - so Ctrl+Z undoes the restore, and nothing is written
+    // back to the real .dat on disk until Save is pressed. This deliberately
+    // does NOT call OpenSaveFile/SaveBackup.Create - restoring isn't "opening
+    // a different file", it's swapping the in-memory buffer for an old one,
+    // exactly like Undo does.
+    private void RestoreBackupButton_Click(object sender, RoutedEventArgs e)
     {
+        if (string.IsNullOrEmpty(_currentPath) || !File.Exists(_currentPath))
+        {
+            AppMessageBox.Show(this, "Open a save file first.", "Restore Backup",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        string? backupPath = RestoreBackupPicker.Show(this, _currentPath);
+        if (backupPath == null) return;
+
+        RestoreFromBackup(backupPath);
+    }
+
+    private void RestoreFromBackup(string backupPath)
+    {
+        if (AppContext.State == null) return;
+
+        byte[] bytes;
         try
         {
-            string? dir = Path.GetDirectoryName(path);
-            if (string.IsNullOrEmpty(dir)) return; // no folder to place a sibling backup in
-
-            string stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-            string backupPath = $"{path}.bak_{stamp}";
-
-            // Reopening the same save twice within one second would otherwise
-            // collide on an identical timestamp - fall back to a numbered
-            // suffix rather than silently overwriting the earlier backup.
-            int n = 2;
-            while (File.Exists(backupPath))
-            {
-                backupPath = $"{path}.bak_{stamp}_{n}";
-                n++;
-            }
-
-            File.Copy(path, backupPath, overwrite: false);
-            AppContext.State?.Log?.Invoke($"Backed up save to {Path.GetFileName(backupPath)}.");
-
-            // Keep only the most recent MaxBackupsPerFile backups for this
-            // save file, so the folder doesn't grow forever across many Open
-            // Save calls.
-            string fileName = Path.GetFileName(path);
-            var old = Directory.GetFiles(dir, $"{fileName}.bak_*")
-                .OrderByDescending(f => f)
-                .Skip(MaxBackupsPerFile);
-            foreach (string f in old)
-            {
-                try { File.Delete(f); }
-                catch { /* not worth failing the backup over a stale file that won't delete */ }
-            }
+            bytes = File.ReadAllBytes(backupPath);
         }
-        catch
+        catch (Exception ex)
         {
-            AppContext.State?.Log?.Invoke("Couldn't create a backup of the save file (continuing anyway).");
+            AppMessageBox.Show(this, $"Couldn't read that backup: {ex.Message}", "Restore Backup",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
         }
+
+        AppContext.Undo.Snapshot();
+        AppContext.State.SaveBytes = bytes;
+        AfterUndoRedo();
+        AppContext.State.Log?.Invoke($"Restored from backup {Path.GetFileName(backupPath)}.");
     }
 
     private void LoadSaveSlots()

@@ -7,7 +7,9 @@
         Height="760" Width="1360" MinHeight="640" MinWidth="1000"
         Background="{StaticResource AppBgBrush}"
         WindowStartupLocation="CenterScreen"
-        KeyDown="Window_KeyDown">
+        AllowDrop="True"
+        KeyDown="Window_KeyDown"
+        DragEnter="Window_DragEnter" DragOver="Window_DragEnter" Drop="Window_Drop">
 
     <Grid>
         <Grid.RowDefinitions>
@@ -84,6 +86,10 @@
                         <Button x:Name="OpenSaveButton" Content="OPEN SAVE" Width="126"
                                 Style="{StaticResource SecondaryButtonStyle}"
                                 Margin="0,0,8,0" Click="OpenSaveButton_Click" />
+                        <Button x:Name="RestoreBackupButton" Content="RESTORE BACKUP" Width="150"
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                Margin="0,0,8,0" Click="RestoreBackupButton_Click"
+                                ToolTip="Load a previous auto-backup of the current save" />
                         <Button x:Name="SaveButton" Content="SAVE" Width="100"
                                 Style="{StaticResource PrimaryButtonStyle}"
                                 IsEnabled="False" Click="SaveButton_Click" />

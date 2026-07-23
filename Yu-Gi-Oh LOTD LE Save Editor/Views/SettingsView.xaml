@@ -9,12 +9,13 @@
         the Offline Mode toggle (AppState.IsOfflineMode - already read by
         DeckEditorView/CardSearchView's image-loading calls, but nothing
         ever set it until this page existed) and the on-disk card image
-        cache CardImageProvider maintains under %LocalAppData% (a live size
-        readout, an Open Cache Folder button, and a Clear Cache button).
-        Everything here is declared
-        once; SettingsView.xaml.cs only ever flips
-        AppContext.State.IsOfflineMode, deletes files in an already-existing
-        directory, and sets TextBlock text - no runtime control creation.
+        cache CardImageProvider maintains under %LocalAppData% (an
+        enable/disable toggle, a live size readout, Open Cache Folder/Clear
+        Cache buttons, a size-limit box with Apply, and Warm Cache). Everything
+        here is declared once; SettingsView.xaml.cs only ever flips
+        AppContext.State.IsOfflineMode/DiskCacheEnabled/CacheSizeLimitMB,
+        deletes files in an already-existing directory, and sets
+        TextBlock/Button text - no runtime control creation.
     -->
 
     <Grid Margin="32,28,32,28">
@@ -60,6 +61,19 @@
                                    FontFamily="Segoe UI" FontSize="11" Foreground="{StaticResource TextMutedBrush}"
                                    TextWrapping="Wrap" Margin="0,0,0,14" />
 
+                        <!-- ── Enable/disable the cache entirely ────────────────────
+                             Off = every image request re-contacts ygoprodeck each
+                             time instead of reading/writing anything on disk (see
+                             CardImageProvider's class doc comment) - separate from
+                             Offline Mode above, which is about not using the network
+                             at all. -->
+                        <CheckBox x:Name="EnableCacheCheckBox" Style="{StaticResource CheckBoxStyle}"
+                                  Content="Cache card art on disk"
+                                  Checked="EnableCacheCheckBox_Changed" Unchecked="EnableCacheCheckBox_Changed" />
+                        <TextBlock Text="When disabled, art is fetched fresh from the network every time instead of being saved to disk - nothing below applies while this is off."
+                                   FontFamily="Segoe UI" FontSize="11" Foreground="{StaticResource TextDimBrush}"
+                                   TextWrapping="Wrap" Margin="26,6,0,14" />
+
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
@@ -75,6 +89,70 @@
                             <Button x:Name="ClearCacheButton" Grid.Column="2" Content="CLEAR CACHE" Width="160"
                                     Style="{StaticResource SecondaryButtonStyle}" Click="ClearCacheButton_Click" />
                         </Grid>
+
+                        <!-- ── Size limit ────────────────────────────────────────────
+                             0 or blank = unlimited. Applying a smaller limit than the
+                             current cache size evicts the least-recently-used files
+                             immediately (CardImageProvider.EnforceCacheLimitNow) rather
+                             than waiting for the next download. -->
+                        <Grid Margin="0,14,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="90" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Max cache size, in MB (0 = unlimited):"
+                                       FontFamily="Segoe UI" FontSize="12" Foreground="{StaticResource TextPrimaryBrush}"
+                                       VerticalAlignment="Center" />
+                            <TextBox x:Name="CacheLimitBox" Grid.Column="1" Height="{StaticResource TouchTargetHeight}"
+                                     Background="{StaticResource InputBgBrush}" Foreground="{StaticResource TextPrimaryBrush}"
+                                     BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                                     Padding="8,0" VerticalContentAlignment="Center" FontFamily="Segoe UI" FontSize="12"
+                                     TextAlignment="Right" Margin="0,0,8,0" />
+                            <Button x:Name="CacheLimitApplyButton" Grid.Column="2" Content="APPLY" Width="90"
+                                    Style="{StaticResource SecondaryButtonStyle}" Click="CacheLimitApplyButton_Click" />
+                        </Grid>
+                        <TextBlock Text="Once the cache hits this size, the least-recently-viewed art is deleted first to make room for new downloads."
+                                   FontFamily="Segoe UI" FontSize="11" Foreground="{StaticResource TextDimBrush}"
+                                   TextWrapping="Wrap" Margin="0,6,0,0" />
+
+                        <!-- ── Warm cache ───────────────────────────────────────────
+                             WarmCacheStatusText doubles as the description (idle),
+                             live progress ("Downloading art... N / total"), and the
+                             final result - never a separately-declared control, just
+                             one TextBlock whose Text WarmCacheButton_Click/
+                             RunWarmCacheAsync update. WarmCacheButton/
+                             CancelWarmCacheButton occupy the same grid cell and swap
+                             Visibility, same "one already-declared element per state"
+                             pattern ClearCacheButton's temporary relabel uses.
+                             Clicking WARM CACHE confirms via AppMessageBox first
+                             (WarmCacheButton_Click), quoting ~150 MB or ~1761 MB
+                             depending on IncludeFullSizeCheckBox below - unchecked
+                             by default, since the small/tile image is what every
+                             grid in this app actually shows constantly, while the
+                             full/preview image is only ever shown for one selected
+                             card at a time (see CardImageProvider.WarmCacheAsync's
+                             doc comment). Even without it, a preview still falls
+                             back to a cached thumbnail instead of going blank - see
+                             CardImageProvider.GetPreviewImageAsync. -->
+                        <Grid Margin="0,14,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock x:Name="WarmCacheStatusText" Grid.Column="0"
+                                       Text="Pre-download art for every card in the database, so it's all available before you go offline."
+                                       FontFamily="Segoe UI" FontSize="11" Foreground="{StaticResource TextMutedBrush}"
+                                       TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,10,0" />
+                            <Button x:Name="WarmCacheButton" Grid.Column="1" Content="WARM CACHE" Width="160"
+                                    Style="{StaticResource SecondaryButtonStyle}" Click="WarmCacheButton_Click" />
+                            <Button x:Name="CancelWarmCacheButton" Grid.Column="1" Content="CANCEL" Width="160"
+                                    Style="{StaticResource SecondaryButtonStyle}" Click="CancelWarmCacheButton_Click"
+                                    Visibility="Collapsed" />
+                        </Grid>
+                        <CheckBox x:Name="IncludeFullSizeCheckBox" Style="{StaticResource CheckBoxStyle}"
+                                  Content="Also include full-size preview art (+~1.6 GB)"
+                                  Margin="0,10,0,0" />
                     </StackPanel>
                 </Border>
 

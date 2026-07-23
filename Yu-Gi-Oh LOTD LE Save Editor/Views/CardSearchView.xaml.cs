@@ -200,7 +200,10 @@ public partial class CardSearchView : UserControl
         // Always request the image - CardImageProvider itself decides
         // whether Offline Mode allows a network fetch, but an on-disk cache
         // hit from an earlier online session should still show up.
-        var image = await CardImageProvider.GetImageAsync(card, small: false);
+        // GetPreviewImageAsync (rather than GetImageAsync directly) falls
+        // back to a cached thumbnail when the full-size art isn't available -
+        // stretched-up and soft, but better than a blank preview.
+        var image = await CardImageProvider.GetPreviewImageAsync(card);
         if (_previewCard == card) // selection may have moved on while this was loading
             PreviewImage.Source = image;
     }

@@ -426,7 +426,10 @@ public partial class DeckEditorView : UserControl, INotifyPropertyChanged
         // Always request the image - CardImageProvider itself decides
         // whether Offline Mode allows a network fetch, but an on-disk cache
         // hit from an earlier online session should still show up.
-        var image = await CardImageProvider.GetImageAsync(card, small: false);
+        // GetPreviewImageAsync (rather than GetImageAsync directly) falls
+        // back to a cached thumbnail when the full-size art isn't available -
+        // stretched-up and soft, but better than a blank preview.
+        var image = await CardImageProvider.GetPreviewImageAsync(card);
         if (_previewCard == card) // selection may have moved on while this was loading
             PreviewImage.Source = image;
     }
@@ -599,11 +602,18 @@ public partial class DeckEditorView : UserControl, INotifyPropertyChanged
     /// the Card List only if the deck doesn't already have 3 copies of that
     /// card - giving a "no drop" cursor rather than silently swallowing the
     /// drop only once it lands. Section capacity is still only checked in
-    /// the Drop handlers themselves.</summary>
+    /// the Drop handlers themselves.
+    /// e.Handled is only set when this is actually our own internal
+    /// CardTileViewModel drag - an unrelated drag (e.g. dropping a .dat save
+    /// file onto the window, see MainWindow's Window_DragEnter/Window_Drop)
+    /// bubbles past these lists untouched instead of having its cursor
+    /// feedback swallowed here.</summary>
     private void List_DragOver(object sender, DragEventArgs e)
     {
+        if (!e.Data.GetDataPresent(typeof(CardTileViewModel))) return;
+
         e.Effects = DragDropEffects.None;
-        if (e.Data.GetDataPresent(typeof(CardTileViewModel)) && sender is ListBox targetList && _draggedVm != null)
+        if (sender is ListBox targetList && _draggedVm != null)
         {
             string targetSection = targetList.Tag as string ?? string.Empty;
             bool sameSection = _draggedSourceSection == targetSection;

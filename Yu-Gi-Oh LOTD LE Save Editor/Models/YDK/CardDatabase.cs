@@ -71,6 +71,12 @@ namespace YuGiOhSaveEditor.Services
             return byLotdId.GetValueOrDefault(lotdId);
         }
 
+        /// <summary>Every card in the database, in file order (alphabetical
+        /// by name - see Cards.json). Used by Settings' "Warm Cache" button
+        /// to pre-download art for the whole set via
+        /// CardImageProvider.WarmCacheAsync.</summary>
+        public IEnumerable<Card> AllCards => cards;
+
         /// <summary>Every real card's save-slot index (Card.LotdId), i.e. the
         /// complete set of CardCollectionLayout indices that correspond to an
         /// actual card rather than unused chunk padding. Used by "Unlock All
