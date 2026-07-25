@@ -295,10 +295,13 @@ public partial class MainWindow : Window
 
     /// <summary>Shared by the Open Save dialog, drag-and-drop, and (once a
     /// save is already open) the Restore Backup flow's implicit "load these
-    /// bytes as the current save" step - validates the path, backs up the
-    /// old on-disk copy, and loads it. Not used by RestoreFromBackup itself,
-    /// which intentionally does NOT re-backup or touch _currentPath (see its
-    /// own doc comment).</summary>
+    /// bytes as the current save" step - validates the path and loads it.
+    /// Doesn't back up the file itself - that now happens in OnSaveFile,
+    /// right before the on-disk copy actually gets overwritten (see its own
+    /// doc comment), rather than on every open regardless of whether the
+    /// user ever saves. Not used by RestoreFromBackup itself, which
+    /// intentionally does NOT touch _currentPath (see its own doc
+    /// comment).</summary>
     private void OpenSaveFile(string path)
     {
         if (!File.Exists(path) || Path.GetExtension(path).ToLowerInvariant() != ".dat")
@@ -310,8 +313,6 @@ public partial class MainWindow : Window
 
         _currentPath = path;
         SaveFileLabel.Text = Path.GetFileName(path);
-
-        SaveBackup.Create(_currentPath);
 
         AppContext.CardDb.Load();
         LoadSaveSlots();
@@ -423,6 +424,14 @@ public partial class MainWindow : Window
             AppContext.State.Log?.Invoke("No save data loaded.");
             return;
         }
+
+        // Back up whatever's currently on disk right before it gets
+        // overwritten below - moved here (from OpenSaveFile) so opening a
+        // save you never end up saving doesn't leave a backup behind; this
+        // still captures the exact same "last on-disk state before this
+        // write" snapshot Restore Backup expects, just triggered by Save
+        // instead of Open.
+        SaveBackup.Create(path);
 
         SaveSignatureFixer.FixInPlace(AppContext.State.SaveBytes);
         File.WriteAllBytes(path, AppContext.State.SaveBytes);
