@@ -36,7 +36,7 @@ Built with C# / WPF on .NET 8. Every screen is declared entirely in XAML — no 
 
 **Deck legality badges.** Each filled deck slot shows a colored dot: green for a deck within the 40–60 card Main-deck range (and within the save format's 60/15/15 caps) with no banlist violations, amber if the Main deck is under 40 cards, red if a section exceeds the save format's hard limits or contains a Forbidden card, more than one Limited copy, or more than two Semi-Limited copies of the same card (LotD banlist, from the bundled card database).
 
-**Auto-backup & restore.** Opening a save file automatically copies it to a timestamped backup (`savegame.dat.bak_20260723_211932`) right next to the save file before anything touches it, keeping the most recent 20 backups per save file name. The top bar's **Restore Backup** button lists those backups and loads whichever one you pick back into the editor — nothing is written to disk until you Save, and the restore itself is a normal undoable edit (`Ctrl+Z` brings back what was open before).
+**Auto-backup & restore.** Clicking **Save** automatically copies the save file's current on-disk contents to a timestamped backup (`savegame.dat.bak_20260723_211932`) right next to it before writing your changes, keeping the most recent 20 backups per save file name — just opening a file (without saving) doesn't create one. The top bar's **Restore Backup** button lists those backups and loads whichever one you pick back into the editor — nothing is written to disk until you Save, and the restore itself is a normal undoable edit (`Ctrl+Z` brings back what was open before).
 
 **Drag-and-drop open.** Drop a `.dat` save file anywhere on the window to open it, same as **Open Save**.
 
