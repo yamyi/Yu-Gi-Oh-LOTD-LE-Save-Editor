@@ -4,25 +4,23 @@ A Windows desktop app for viewing and editing save files from *Yu-Gi-Oh! Legacy 
 
 Built with C# / WPF on .NET 8. Every screen is declared entirely in XAML — no controls are ever created at runtime in code.
 
-## Screenshots
-
-| Deck Slots | Deck Editor |
-|---|---|
-| ![Deck Slots](screenshots/deck-slots.png) | ![Deck Editor](screenshots/deck-editor.png) |
-
-| Card Search | Save Editor — Campaign |
-|---|---|
-| ![Card Search](screenshots/card-search.png) | ![Save Editor Campaign tab](screenshots/save-editor-campaign.png) |
-
 ## Features
 
 **32-slot deck browser (Deck Slots).** See every deck slot in the save at once, each showing the duelist portrait, deck name, Main/Extra/Side card counts, and a small legality dot. Search by deck name or by any card inside the deck. Select a slot to Rename it, Copy To or Swap With another slot, Change Duelist, Clear the slot entirely, or Import/Export its `.ydk`. Export All Decks dumps every non-empty slot to its own `.ydk` file in a chosen folder in one go.
 
+<img width="1919" height="1032" alt="Screenshot 2026-07-25 153430" src="https://github.com/user-attachments/assets/ea362f01-791e-4c06-b40e-bbdd32a57095" />
+
+
 **Full deck editor (Deck Editor).** Search the entire card database and filter by type/attribute/race/archetype/level/ATK/DEF/Link rating/Pendulum scale (as min–max ranges), then build out Main/Extra/Side decks slot by slot. Double-click a search result to add it to the deck; double-click a deck card to remove it. A live stats panel shows monster/spell/trap breakdowns, average level, and attribute/type distribution as you edit. Card art can be viewed online or the app can run fully offline with text-only cards.
+
+<img width="1919" height="1022" alt="Screenshot 2026-07-25 153513" src="https://github.com/user-attachments/assets/6bd48f37-6615-4477-9952-00f4f78f44c5" />
 
 **Drag-and-drop.** Drag a card to reorder it within a deck section, or drag a `.ydk` file in from Explorer and drop it onto a slot to import it directly. A thumbnail follows the cursor while dragging.
 
 **Card Search.** Browse and inspect the full card database independently of any particular deck, with the same filtering options as Deck Editor.
+
+<img width="1919" height="1034" alt="Screenshot 2026-07-25 153727" src="https://github.com/user-attachments/assets/34cf137c-7a84-48fc-8a39-6120dedc06b4" />
+
 
 **Save Editor.** A tabbed editor over the rest of the save file:
 - *Duel Points* — view and set the DP total.
@@ -31,6 +29,8 @@ Built with C# / WPF on .NET 8. Every screen is declared entirely in XAML — no 
 - *Avatars* — toggle which duelist avatars are unlocked.
 - *Stats* — view and edit the save's tracked lifetime stats (duels played/won, cards traded, decks created, and more).
 - *Cards* — an accurate "X / 10027 card slots have at least 1 copy owned" counter alongside a second "X / 30081 total copies owned" tally (every owned card can hold up to 3 copies, so this one tracks the actual copy count rather than just whether a card is owned at all), both scanning the save's full card table rather than just its used prefix. Also: a bulk "set every currently-owned card's count" tool that leaves un-owned cards alone, a one-click Unlock All Cards that owns exactly the 10,027 real cards without touching unused save padding, and a search box to look up and unlock/set the count of one specific card by name.
+
+<img width="1919" height="1030" alt="Screenshot 2026-07-25 153758" src="https://github.com/user-attachments/assets/7cfe1e7a-c1a3-46c9-bf22-8bf4d6f00333" />
 
 **Undo / redo.** Every edit — renames, duelist changes, copy/swap, clears, imports, drag-reorders, and every Save Editor edit — can be undone with `Ctrl+Z` and redone with `Ctrl+Y` (or `Ctrl+Shift+Z`), or via the top-bar buttons. `Ctrl+O` opens a save file and `Ctrl+S` saves it. Undo history resets whenever a save file is (re)loaded.
 
