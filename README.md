@@ -1,126 +1,819 @@
-# Yu-Gi-Oh LOTD LE Save Editor
+# Yu-Gi-Oh! Legacy of the Duelist: Link Evolution Save Editor
 
-A Windows desktop app for viewing and editing save files from *Yu-Gi-Oh! Legacy of the Duelist: Link Evolution*. It reads and writes the game's `.dat` save format directly, so changes made here are just as valid as ones made in-game.
+<p align="center">
+ <img width="1919" height="1032" alt="image" src="https://github.com/user-attachments/assets/c64eb849-8552-4fe2-bee4-c1029d2efdee" width="1000">
+</p>
 
-Built with C# / WPF on .NET 8. Every screen is declared entirely in XAML — no controls are ever created at runtime in code.
+<p align="center">
 
-## Features
+![.NET](https://img.shields.io/badge/.NET-8-512BD4?logo=.net)
+![Platform](https://img.shields.io/badge/Platform-Windows-0078D6?logo=windows)
+![Framework](https://img.shields.io/badge/UI-WPF-0C54C2)
+![License](https://img.shields.io/badge/License-MIT-green)
 
-<img width="1919" height="1032" alt="Screenshot 2026-07-25 153430" src="https://github.com/user-attachments/assets/ea362f01-791e-4c06-b40e-bbdd32a57095" />
+</p>
 
-**32-slot deck browser (Deck Slots).** See every deck slot in the save at once, each showing the duelist portrait, deck name, Main/Extra/Side card counts, and a small legality dot. Search by deck name or by any card inside the deck. Select a slot to Rename it, Copy To or Swap With another slot, Change Duelist, Clear the slot entirely, or Import/Export its `.ydk`. Export All Decks dumps every non-empty slot to its own `.ydk` file in a chosen folder in one go.
+A modern Windows editor for **Yu-Gi-Oh! Legacy of the Duelist: Link Evolution** save files.
 
-<img width="1919" height="1032" alt="Screenshot 2026-07-25 153430" src="https://github.com/user-attachments/assets/ea362f01-791e-4c06-b40e-bbdd32a57095" />
+Edit decks, unlock content, modify card collections, inspect statistics, manage campaigns, and browse the complete card database from one native WPF application.
 
-**Full deck editor (Deck Editor).** Search the entire card database and filter by type/attribute/race/archetype/level/ATK/DEF/Link rating/Pendulum scale (as min–max ranges), then build out Main/Extra/Side decks slot by slot. Double-click a search result to add it to the deck; double-click a deck card to remove it. A live stats panel shows monster/spell/trap breakdowns, average level, and attribute/type distribution as you edit. Card art can be viewed online or the app can run fully offline with text-only cards.
+Built with **C#**, **WPF**, and **.NET 8**, the editor reads and writes the game's native `.dat` save format directly, meaning every save produced is identical to one created by the game itself.
 
-**Drag-and-drop.** Drag a card to reorder it within a deck section, or drag a `.ydk` file in from Explorer and drop it onto a slot to import it directly. A thumbnail follows the cursor while dragging.
+---
 
-<img width="1919" height="1034" alt="Screenshot 2026-07-25 153727" src="https://github.com/user-attachments/assets/34cf137c-7a84-48fc-8a39-6120dedc06b4" />
+# Contents
 
-**Card Search.** Browse and inspect the full card database independently of any particular deck, with the same filtering options as Deck Editor.
+- [Features](#features)
+- [Screenshots](#screenshots)
+- [Getting Started](#getting-started)
+- [Offline Mode](#offline-mode)
+- [Project Structure](#project-structure)
+- [Save Format](#how-the-save-format-works)
+- [Known Limitations](#known-limitations)
+- [Credits](#credits)
+- [License](#licensing)
 
-<img width="1919" height="1030" alt="Screenshot 2026-07-25 153758" src="https://github.com/user-attachments/assets/7cfe1e7a-c1a3-46c9-bf22-8bf4d6f00333" />
+---
 
-**Save Editor.** A tabbed editor over the rest of the save file:
-- *Duel Points* — view and set the DP total.
-- *Campaign* — view and toggle completion for every non-reverse campaign duel.
-- *Unlocks* — Shop Packs and Battle Packs checklists (including duelist-specific packs like Blue Angel, Soulburner, Varis, Ai, War of the Giants/Round 2, and Epic Dawn) plus Tutorials, each with per-item toggles and bulk Unlock All / Clear All.
-- *Avatars* — toggle which duelist avatars are unlocked.
-- *Stats* — view and edit the save's tracked lifetime stats (duels played/won, cards traded, decks created, and more).
-- *Cards* — an accurate "X / 10027 card slots have at least 1 copy owned" counter alongside a second "X / 30081 total copies owned" tally (every owned card can hold up to 3 copies, so this one tracks the actual copy count rather than just whether a card is owned at all), both scanning the save's full card table rather than just its used prefix. Also: a bulk "set every currently-owned card's count" tool that leaves un-owned cards alone, a one-click Unlock All Cards that owns exactly the 10,027 real cards without touching unused save padding, and a search box to look up and unlock/set the count of one specific card by name.
+# Features
 
+The editor isn't just a deck editor—it's a complete save editor covering virtually every editable part of the game's save file.
 
-**Undo / redo.** Every edit — renames, duelist changes, copy/swap, clears, imports, drag-reorders, and every Save Editor edit — can be undone with `Ctrl+Z` and redone with `Ctrl+Y` (or `Ctrl+Shift+Z`), or via the top-bar buttons. `Ctrl+O` opens a save file and `Ctrl+S` saves it. Undo history resets whenever a save file is (re)loaded.
+## 🃏 Deck Management
 
-**Deck legality badges.** Each filled deck slot shows a colored dot: green for a deck within the 40–60 card Main-deck range (and within the save format's 60/15/15 caps) with no banlist violations, amber if the Main deck is under 40 cards, red if a section exceeds the save format's hard limits or contains a Forbidden card, more than one Limited copy, or more than two Semi-Limited copies of the same card (LotD banlist, from the bundled card database).
+### 32-Slot Deck Browser
 
-**Auto-backup & restore.** Clicking **Save** automatically copies the save file's current on-disk contents to a timestamped backup (`savegame.dat.bak_20260723_211932`) right next to it before writing your changes, keeping the most recent 20 backups per save file name — just opening a file (without saving) doesn't create one. The top bar's **Restore Backup** button lists those backups and loads whichever one you pick back into the editor — nothing is written to disk until you Save, and the restore itself is a normal undoable edit (`Ctrl+Z` brings back what was open before).
+Browse every deck slot simultaneously with rich information displayed for each deck:
 
-**Drag-and-drop open.** Drop a `.dat` save file anywhere on the window to open it, same as **Open Save**.
+- Duelist portrait
+- Deck name
+- Main / Extra / Side counts
+- Legality indicator
+- Search by deck name
+- Search by contained cards
 
-**Settings.** Toggle Offline Mode (already-cached card art still displays offline; only genuinely uncached cards fall back to a text label — and a card preview specifically falls back further to a stretched-up thumbnail if that's all that's cached, rather than showing nothing). The on-disk image cache itself is also optional — turn it off and every image request re-contacts ygoprodeck fresh each time instead of ever touching disk — and, while it's on, an optional max size (in MB) evicts the least-recently-viewed art first once the cache grows past it. **Warm Cache** pre-downloads art for the whole card database before you go offline (confirms first): thumbnails only by default (~150 MB, covers every grid in the app), with an opt-in checkbox to also include full-size preview art (~1761 MB total). The panel also has Open Cache Folder / Clear Cache. Offline Mode, the disk cache toggle, and the cache size limit are all saved automatically and restored the next time the app opens. Version/about info is at the bottom.
+Each slot can be:
 
-## Getting started
+- Renamed
+- Copied
+- Swapped
+- Cleared
+- Assigned to another duelist
+- Imported from `.ydk`
+- Exported to `.ydk`
 
-1. Open `Yu-Gi-Oh LOTD LE Save Editor.slnx` in Visual Studio 2022 (17.8+) or JetBrains Rider. The [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) is required.
-2. Build and run (`F5`, or `dotnet run --project "Yu-Gi-Oh LOTD LE Save Editor"` from the repo root).
-3. In the app, use **Open save** (`Ctrl+O`) to load a `.dat` save file, browse/edit decks and save data, then **Save file** (`Ctrl+S`) to write changes back.
+Export every populated deck in a single operation.
 
-The card database (`Assets/cards/Cards.json`) and duelist portraits (`Assets/characters/*.png`) live directly under the project's own `Assets/` folder and are embedded into the app as build resources — no extra setup needed.
+---
 
-Each card entry also carries a `shop_packs` array — which of the game's own Card Shop booster packs (Grandpa Muto, Yugi, Seto Kaiba, Yusei Fudo, Ai, etc.) sell that card, and at what pack-specific rarity (`Common` or `Rare` — the shop system only has those two tiers, separate from any real-world TCG rarity). A card can appear in more than one pack, so it's a list rather than a single field, e.g. `"shop_packs": [{"pack": "Yugi", "rarity": "Rare"}]`. Sourced from a fan-compiled [Card Shop list](https://gamefaqs.gamespot.com/pc/280088-yu-gi-oh-legacy-of-the-duelist-link-evolution/faqs/79850) covering all 33 packs; 10,025 of 10,027 cards matched cleanly (`Synchro Chase` and `The Unhappy Girl` have no confirmed pack in that source, so their card preview just omits the line). Both the Deck Editor and Card Search preview panels show it as a "Shop: Pack Name (Rarity)" line right under the ban status.
+### Full Deck Editor
 
-Each card entry also carries a `duelist_challenges` array — which duelist(s)' dedicated Duelist Challenge decklist (the single deck per character explicitly suffixed "- Challenge" in the source guide, as opposed to their regular campaign-episode decks) contains that card; winning or losing that duel awards copies of everything in the opponent's deck. A card can show up in more than one duelist's Challenge deck (staples like Mystical Space Typhoon appear in over 80), so it's a list of duelist names, e.g. `"duelist_challenges": ["Seto Kaiba", "Yugi Muto"]`. Sourced from a fan-compiled [Character Deck List guide](https://gamefaqs.gamespot.com/pc/280088-yu-gi-oh-legacy-of-the-duelist-link-evolution/faqs/79842) covering all 160 duelist appearances across every campaign era; 2,201 of the guide's 2,202 unique card names matched cleanly (`Sword Slash` has no confirmed match — likely a typo in the source for a similarly-named card). Both preview panels show it as a "Duelist Challenge: Name, Name" line right under the Shop line, capped at 5 names with a "+N more" suffix for cards that appear in a lot of decks.
+Build decks using the entire card database.
 
-The same two preview panels also show "Owned: X / 3" right under the passcode — how many copies of that specific card the currently loaded save has, read live from the save's card table (not just whether it's shop-obtainable). Blank if no save is loaded yet.
+Powerful filtering includes:
 
-Both preview panels also show the card's Type and Attribute as small icons right next to that Race/Attribute text line — the 26 Monster Type icons from *Yu-Gi-Oh! Master Duel*'s own icon set, and the 7 official TCG/OCG Attribute icons (DARK/LIGHT/EARTH/WATER/FIRE/WIND/DIVINE), both sourced from Yugipedia and bundled under `Assets/icons/`.
+- Monster Type
+- Attribute
+- Race
+- Archetype
+- Level
+- Link Rating
+- Pendulum Scale
+- ATK / DEF
+- Min / Max ranges
 
-### Offline mode
+Features include:
 
-Settings → Offline mode stops the app from downloading any new card art over the network. Art that's already cached on disk (including from a Warm Cache run) still displays normally; only cards with no cached art fall back to a text label in place of the image. Useful without a network connection or to save bandwidth — use **Warm Cache** in Settings beforehand to pre-download everything.
+- Double-click to add cards
+- Double-click to remove cards
+- Drag-and-drop reordering
+- Live deck statistics
+- Attribute distribution
+- Type breakdown
+- Average level calculations
 
-## Project structure
+Card artwork can be displayed online or the application can operate entirely offline.
+
+---
+
+### Drag & Drop
+
+Deck editing feels natural.
+
+- Reorder cards with drag-and-drop
+- Import `.ydk` files by dropping directly onto deck slots
+- Visual drag thumbnail follows the cursor
+
+---
+
+## 🔍 Card Database
+
+Browse the complete Link Evolution card database independently from any deck.
+
+Everything available inside the Deck Editor is also available here:
+
+- Full search
+- Advanced filters
+- Card previews
+- Banlist status
+- Shop Pack information
+- Duelist Challenge information
+- Owned copies
+- Card artwork
+
+Perfect for exploring cards without modifying a deck.
+
+---
+
+## 💾 Save Editing
+
+The Save Editor exposes nearly every editable portion of the save file.
+
+| Section | Description |
+|---------|-------------|
+| 💰 Duel Points | Edit total Duel Points |
+| 🏆 Campaign | Toggle completion of campaign duels |
+| 📦 Unlocks | Unlock Shop Packs, Battle Packs and Tutorials |
+| 👤 Avatars | Unlock duelist avatars |
+| 📈 Statistics | Edit lifetime game statistics |
+| 🃏 Card Collection | Edit owned cards and copy counts |
+
+### Card Collection Features
+
+The collection editor provides accurate statistics over the entire save file.
+
+It displays:
+
+- Number of owned cards
+- Total copies owned
+- Complete collection progress
+
+Utilities include:
+
+- Unlock every card
+- Set owned copy counts
+- Search individual cards
+- Modify specific ownership values
+
+Unlike many save editors, these values are calculated by scanning the complete card table rather than only its populated prefix.
+
+---
+
+## ⚡ Quality-of-Life Features
+
+### Unlimited Undo / Redo
+
+Every editing operation is undoable.
+
+Supported operations include:
+
+- Deck editing
+- Imports
+- Exports
+- Renames
+- Copy / Swap
+- Drag operations
+- Save editing
+- Unlock changes
+
+Keyboard shortcuts:
+
+| Shortcut | Action |
+|----------|--------|
+| Ctrl+Z | Undo |
+| Ctrl+Shift+Z | Redo |
+| Ctrl+Y | Redo |
+| Ctrl+O | Open Save |
+| Ctrl+S | Save |
+
+Undo history resets whenever a save file is reloaded.
+
+---
+
+### Deck Legality Checking
+
+Each populated deck displays a legality indicator.
+
+| Color | Meaning |
+|--------|---------|
+| 🟢 Green | Legal |
+| 🟡 Amber | Main deck below 40 cards |
+| 🔴 Red | Illegal deck size or banlist violation |
+
+Checks include:
+
+- Main Deck size
+- Extra Deck size
+- Side Deck size
+- Forbidden cards
+- Limited cards
+- Semi-Limited cards
+
+using the bundled Link Evolution banlist.
+
+---
+
+### Automatic Backups
+
+> [!TIP]
+> Every time you save, the original save is automatically backed up before any changes are written.
+
+Features include:
+
+- Timestamped backups
+- Automatic rotation
+- Keeps the newest 20 backups
+- Restore previous backups directly inside the editor
+- Restores are themselves undoable
+
+---
+
+### Drag & Drop Save Opening
+
+Simply drag a `.dat` save anywhere onto the application window to open it.
+
+---
+
+### Settings
+
+Customize how the editor behaves.
+
+Available options include:
+
+- Offline Mode
+- Disk image cache
+- Maximum cache size
+- Warm Cache
+- Clear Cache
+- Open Cache Folder
+- Version information
+
+The Warm Cache tool can download artwork for the entire game database before going offline.
+
+- Thumbnails only (~150 MB)
+- Full-size artwork (~1.7 GB)
+
+All settings are automatically saved and restored the next time the application starts.
+
+---
+
+# Screenshots
+
+## Deck Browser
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/ea362f01-791e-4c06-b40e-bbdd32a57095" width="100%">
+</p>
+
+Browse every deck in the save at a glance, search by deck name or contained cards, and quickly rename, copy, swap, import, export, or clear individual deck slots.
+
+---
+
+## Deck Editor
+
+<p align="center">
+<img src="https://github.com/user-attachments/assets/03a0830f-dc70-4642-bca6-4395570140e8" width="100%">
+</p>
+
+Build decks using the complete card database with advanced filtering, drag-and-drop editing, live deck statistics, and online or offline card artwork.
+
+---
+
+## Card Search
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/34cf137c-7a84-48fc-8a39-6120dedc06b4" width="100%">
+</p>
+
+Explore the entire card database independently of any deck using the same powerful search and filtering tools available inside the Deck Editor.
+
+---
+
+## Save Editor
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/7cfe1e7a-c1a3-46c9-bf22-8bf4d6f00333" width="100%">
+</p>
+
+Modify campaign progress, Duel Points, unlocks, avatars, statistics, and the complete card collection from one unified editor.
+
+---
+
+# Getting Started
+
+## Requirements
+
+Before building the project, ensure you have:
+
+- Windows
+- Visual Studio 2022 (17.8+) **or** JetBrains Rider
+- .NET 8 SDK
+
+Download the latest SDK from:
+
+https://dotnet.microsoft.com/download/dotnet/8.0
+
+---
+
+## Building
+
+Clone the repository and either:
+
+- Open `Yu-Gi-Oh LOTD LE Save Editor.slnx` in Visual Studio or Rider
+
+or run
+
+```bash
+dotnet run --project "Yu-Gi-Oh LOTD LE Save Editor"
+```
+
+from the repository root.
+
+---
+
+## Using the Editor
+
+1. Launch the application.
+2. Open a `.dat` save (`Ctrl + O`).
+3. Browse or edit decks.
+4. Modify save data.
+5. Press `Ctrl + S` to write your changes.
+
+> [!IMPORTANT]
+> Saving automatically creates a timestamped backup before anything is written to disk.
+
+---
+
+## Included Assets
+
+No additional setup is required.
+
+The application embeds:
+
+- Card database (`Assets/cards/Cards.json`)
+- Duelist portraits
+- Icons
+- Themes
+- Resources
+
+Everything required to run the editor ships with the project.
+
+---
+
+# Card Database
+
+Every card entry contains considerably more than just card text.
+
+Each card includes:
+
+- Card information
+- Banlist status
+- Shop Pack availability
+- Duelist Challenge appearances
+- Artwork
+- Internal Link Evolution ID
+
+This allows the editor to provide context that isn't available in-game.
+
+---
+
+## Shop Pack Information
+
+Every card stores the Card Shop booster packs that can award it.
+
+Example:
 
 ```
-Yu-Gi-Oh LOTD LE Save Editor/
-├── Yu-Gi-Oh LOTD LE Save Editor.csproj
-├── App.xaml(.cs)              ← App startup, merged theme/style resource dictionaries
-├── MainWindow.xaml(.cs)        ← Top-level window: sidebar nav, top bar, undo/redo, file I/O, keyboard shortcuts, auto-backup
-├── AppContext.cs                ← Global static services (save state, card DB, undo)
+Shop:
+Yugi (Rare)
+```
+
+Cards can belong to multiple packs, each with its own rarity.
+
+The bundled database covers all **33** Link Evolution shop packs.
+
+Only two cards remain without a confirmed source:
+
+- Synchro Chase
+- The Unhappy Girl
+
+---
+
+## Duelist Challenge Information
+
+Cards also record every Duelist Challenge deck that contains them.
+
+Example:
+
+```
+Duelist Challenge
+
+Yugi Muto
+Seto Kaiba
+Joey Wheeler
+```
+
+Cards appearing in many challenge decks automatically collapse into:
+
+```
++12 more
+```
+
+to keep previews readable.
+
+The bundled data covers every Duelist Challenge deck in the game.
+
+---
+
+## Owned Card Counter
+
+When a save is loaded, card previews also display:
+
+```
+Owned: X / 3
+```
+
+This value updates live directly from the loaded save file.
+
+---
+
+## Icons
+
+Preview panels include official icons for:
+
+- Attribute
+- Monster Type
+
+The project bundles:
+
+- Official TCG/OCG Attribute icons
+- Yu-Gi-Oh! Master Duel Monster Type icons
+
+making previews much easier to scan.
+
+---
+
+# Offline Mode
+
+> [!NOTE]
+> Offline Mode only prevents downloading new artwork.
+
+Already cached artwork continues to display normally.
+
+Cards without cached artwork automatically fall back to text-only previews.
+
+For completely offline usage, use **Warm Cache** beforehand to download every card image.
+
+Available options:
+
+- Thumbnail cache (~150 MB)
+- Full-resolution cache (~1.7 GB)
+
+---
+
+# Project Structure
+
+<details>
+
+<summary><strong>Repository Layout</strong></summary>
+
+```text
+Yu-Gi-Oh LOTD LE Save Editor
 │
-├── Views/                       ← DeckSlotsView, DeckEditorView, CardSearchView, SaveEditorView, SettingsView
-├── Controls/                    ← Reusable windows/converters/view-models (OwnerPickerWindow, ImageViewerWindow, AppInputBox, AppMessageBox, tile/stat/search-result view-models, geometry/brush converters)
-├── Themes/                       ← MasterDuelTheme.xaml (fixed palette), Controls.xaml (shared styles)
+├── App.xaml(.cs)
+├── MainWindow.xaml(.cs)
+├── AppContext.cs
+│
+├── Views/
+│   ├── DeckSlotsView
+│   ├── DeckEditorView
+│   ├── CardSearchView
+│   ├── SaveEditorView
+│   └── SettingsView
+│
+├── Controls/
+│
+├── Themes/
 │
 ├── Models/
-│   ├── Save/                    ← LotdSaveFormat, SlotLayout, SlotIO, OwnerDatabase, CampaignSaveLayout, MiscSaveLayout (DP/shop/battle-pack flags), CardCollectionLayout, StatsLayout, SaveSignatureFixer
-│   └── YDK/                     ← Card, Deck, CardDatabase, YDKReader/Writer
+│   ├── Save/
+│   └── YDK/
 │
-├── Services/                     ← DeckLegalityChecker, UndoManager, AppState, CardImageProvider, PortraitProvider, and other helpers
+├── Services/
 │
-└── Assets/                       ← Backgrounds, icons, cards/Cards.json, characters/*.png
+└── Assets/
 ```
 
-## How the save format works
+</details>
 
-`Models/Save/LotdSaveFormat.cs` centralizes the version-dependent offsets and sizes (deck slot count, card table size, real card count, stats count) for the two known save formats (`Lotd` and `LinkEvolution`). The other `Models/Save/*Layout.cs` files each own one region of the save:
+---
 
-- `SlotLayout.cs` / `SlotIO.cs` — 32 (or more, per version) fixed-size deck-slot blocks, each holding a name, owner ID, Main/Extra/Side counts, and up to 90 card IDs, all little-endian; `SaveSignatureFixer.cs` patches the save's checksum/signature before writing back to disk.
-- `CardCollectionLayout.cs` — one byte per card slot across the save's full card table (owned count 0–3 + a "seen" flag). The real card count (10,027 for LinkEvolution) is smaller than the table's full capacity (20,000), and real cards are scattered throughout that table rather than occupying a contiguous prefix — every scan or bulk operation here walks the full table and only uses the real card count as a display denominator, and per-card lookups go through `Card.LotdId`, which is confirmed to be the same index this class reads/writes.
-- `MiscSaveLayout.cs` — Duel Points, and the Shop Pack / Battle Pack unlock flag bits (each duelist and pack's exact bit was confirmed by diffing real before/after saves).
-- `CampaignSaveLayout.cs` — per-duel campaign completion state.
-- `StatsLayout.cs` — the save's ~40 tracked lifetime stats (duels played/won, cards traded, decks created, etc.), each an 8-byte counter at a fixed offset.
+## Project Highlights
 
-Card lookups elsewhere go through `Models/YDK/CardDatabase.cs`, which maps between the game's own internal `LotdId` and the broader YGOPRODeck-style card data bundled in `Cards.json` (including TCG banlist status) — only cards with a known `LotdId` can actually be written into a save slot or the card collection table.
+### Views
 
-## Known limitations
+Contains every major application page.
 
-- No installer — run from source or a self-built binary.
-- Deck legality checks the LotD banlist only; there's no separate TCG/OCG/region setting.
-- Compiling requires a Windows machine with the .NET 8 SDK and the WPF (`Microsoft.NET.Sdk` + `UseWPF`) workload — there's no cross-platform build target.
+- Deck Browser
+- Deck Editor
+- Card Search
+- Save Editor
+- Settings
 
-## Credits
+---
 
-This project stands on a lot of other people's work:
+### Models
 
-- **[pixeltris/Lotd](https://github.com/pixeltris/Lotd)** — the original reverse-engineering of the save format itself. Every offset, enum, and bit layout in `Models/Save/*` (`LotdSaveFormat`, `SlotLayout`, `MiscSaveLayout`, `CampaignSaveLayout`, `CardCollectionLayout`, `StatsLayout`) traces back to their work, ported here and re-verified against real save files along the way. This editor wouldn't exist without it.
-- **[YGOPRODeck](https://ygoprodeck.com/)** — card names, text, and stats behind `Assets/cards/Cards.json`, plus the API and per-card pages the "View on ygoprodeck" links point to.
-- **[Yugipedia](https://yugipedia.com/)** — source for the official Attribute icons and *Yu-Gi-Oh! Master Duel*'s Type icons bundled under `Assets/icons/`.
-- A fan-compiled **[Card Shop list](https://gamefaqs.gamespot.com/pc/280088-yu-gi-oh-legacy-of-the-duelist-link-evolution/faqs/79850)** and **[Character Deck List guide](https://gamefaqs.gamespot.com/pc/280088-yu-gi-oh-legacy-of-the-duelist-link-evolution/faqs/79842)** on GameFAQs — the source for each card's `shop_packs` and `duelist_challenges` data.
-- **Konami / 4K Media** — for *Yu-Gi-Oh! Legacy of the Duelist: Link Evolution* itself, the game this whole project is built around.
+Responsible for reading and writing both save files and `.ydk` decks.
 
-## Licensing
+Includes:
 
-This project's own source code is MIT-licensed — see [`LICENSE`](LICENSE). Use, fork, or modify it freely, including commercially, as long as the copyright notice stays attached.
+- Save layouts
+- Card database
+- Deck serialization
+- Save signatures
 
-That license covers the code only. Two things bundled in `Assets/` are not original work and aren't covered by it:
+---
 
-- `Assets/cards/Cards.json` — card names, text, and stats sourced from [YGOPRODeck](https://ygoprodeck.com/)'s API.
-- `Assets/characters/*.png` — duelist portraits extracted from the game itself.
-- `Assets/icons/Attribute-*.png` and `Assets/icons/Type-*-MADU.png` — the official Attribute icons and *Yu-Gi-Oh! Master Duel*'s Type icons, sourced from [Yugipedia](https://yugipedia.com/).
+### Services
 
-Card data, card images, and all *Yu-Gi-Oh!* trademarks/copyrights belong to **4K Media Inc., a subsidiary of Konami Digital Entertainment, Inc.** This is an unofficial fan-made tool — it is not produced by, endorsed by, or affiliated with Konami, 4K Media, or YGOPRODeck. Don't redistribute those two assets outside of this tool, and if you fork the project for anything beyond personal use, swap in your own card/portrait data or keep the same non-affiliation disclaimer.
+Application-wide functionality including:
 
-(Not legal advice — if you plan to distribute this beyond personal/hobby use, it's worth having Konami's IP policies and YGOPRODeck's API terms in front of you directly.)
+- Undo manager
+- Deck legality checker
+- Card image provider
+- Portrait provider
+- Global application state
+
+---
+
+### Assets
+
+Bundles everything required by the editor:
+
+- Card database
+- Portraits
+- Icons
+- Themes
+- Backgrounds
+
+No runtime downloads are required beyond optional card artwork.
+
+---
+
+# How the Save Format Works
+
+<details>
+
+<summary><strong>Implementation Details</strong></summary>
+
+The project separates every region of the save into dedicated layout classes.
+
+### LotdSaveFormat
+
+Defines version-specific information including:
+
+- Deck slot counts
+- Card table sizes
+- Statistics counts
+- Save offsets
+
+for both supported save formats.
+
+---
+
+### SlotLayout / SlotIO
+
+Responsible for reading and writing deck slots.
+
+Each slot contains:
+
+- Deck name
+- Duelist owner
+- Card counts
+- Card IDs
+
+The save signature is automatically repaired before writing.
+
+---
+
+### CardCollectionLayout
+
+Handles the game's card ownership table.
+
+Unlike many editors, this implementation scans the entire save table rather than assuming cards occupy one contiguous block.
+
+This guarantees:
+
+- Accurate owned-card totals
+- Correct copy counts
+- Safe bulk operations
+
+even though Link Evolution scatters real cards throughout the save.
+
+---
+
+### MiscSaveLayout
+
+Handles:
+
+- Duel Points
+- Shop Pack unlocks
+- Battle Pack unlocks
+
+Every bit has been verified against real saves.
+
+---
+
+### CampaignSaveLayout
+
+Stores campaign duel completion.
+
+---
+
+### StatsLayout
+
+Stores the game's lifetime statistics including:
+
+- Duels played
+- Duels won
+- Cards traded
+- Decks created
+- and many more.
+
+---
+
+The card database maps Link Evolution's internal card IDs to the richer YGOPRODeck dataset, allowing decks and save files to reference the same underlying card information.
+
+</details>
+
+---
+# Known Limitations
+
+Although the editor supports nearly every aspect of the save format, a few limitations remain.
+
+- No installer is currently provided. The project must be run from source or from a self-built binary.
+- Deck legality uses the bundled **Link Evolution** banlist only. There is currently no option to validate against alternate TCG or OCG formats.
+- Building the project requires Windows with the **.NET 8 SDK** and the WPF workload (`Microsoft.NET.Sdk` + `UseWPF`).
+
+---
+
+# Credits
+
+This project would not have been possible without the work of several other communities and projects.
+
+## Save Format Research
+
+### pixeltris/Lotd
+
+The original reverse engineering of the Link Evolution save format.
+
+Every save offset, enum, data structure, and bitfield ultimately traces back to their research, which has been ported, expanded, and verified against real save files throughout this project.
+
+Without their work, this editor would not exist.
+
+GitHub:
+https://github.com/pixeltris/Lotd
+
+---
+
+## Card Database
+
+### YGOPRODeck
+
+Provides the card database used by the editor, including:
+
+- Card names
+- Effect text
+- Statistics
+- Banlist information
+- API
+- Card pages
+
+Website:
+
+https://ygoprodeck.com/
+
+---
+
+## Icons
+
+### Yugipedia
+
+Source of the bundled:
+
+- Attribute icons
+- Yu-Gi-Oh! Master Duel Monster Type icons
+
+Website:
+
+https://yugipedia.com/
+
+---
+
+## Additional Data
+
+### GameFAQs Community Guides
+
+Several fan-maintained guides were used to enrich the bundled database.
+
+These include:
+
+- Card Shop booster pack availability
+- Duelist Challenge deck contents
+
+Special thanks to everyone who compiled and maintained these resources.
+
+Card Shop Guide
+
+https://gamefaqs.gamespot.com/pc/280088-yu-gi-oh-legacy-of-the-duelist-link-evolution/faqs/79850
+
+Character Deck Guide
+
+https://gamefaqs.gamespot.com/pc/280088-yu-gi-oh-legacy-of-the-duelist-link-evolution/faqs/79842
+
+---
+
+## Konami / 4K Media
+
+Finally, thanks to Konami and 4K Media for creating **Yu-Gi-Oh! Legacy of the Duelist: Link Evolution**, without which this project obviously would not exist.
+
+---
+
+# Licensing
+
+The source code in this repository is released under the **MIT License**.
+
+See the included **LICENSE** file for the full license text.
+
+You are free to:
+
+- Use
+- Modify
+- Fork
+- Redistribute
+- Use commercially
+
+provided that the original copyright notice remains intact.
+
+---
+
+## Third-Party Assets
+
+The MIT license applies **only** to the original source code contained in this repository.
+
+Several bundled assets remain the property of their respective owners.
+
+### Card Database
+
+`Assets/cards/Cards.json`
+
+Contains card information sourced from **YGOPRODeck**.
+
+---
+
+### Duelist Portraits
+
+`Assets/characters/*.png`
+
+Extracted from **Yu-Gi-Oh! Legacy of the Duelist: Link Evolution**.
+
+---
+
+### Icons
+
+`Assets/icons/Attribute-*.png`
+
+`Assets/icons/Type-*-MADU.png`
+
+Official Attribute icons and Monster Type icons sourced from Yugipedia.
+
+---
+
+## Disclaimer
+
+This is an unofficial fan-made project.
+
+It is **not** produced by, endorsed by, sponsored by, or affiliated with:
+
+- Konami
+- Konami Digital Entertainment
+- 4K Media
+- YGOPRODeck
+
+All Yu-Gi-Oh! names, artwork, trademarks, and copyrights belong to their respective owners.
+
+If you redistribute this project beyond personal use, you should either:
+
+- replace the bundled game assets with your own, or
+- retain the same attribution and non-affiliation notice.
+
+---
+
+<p align="center">
+
+Built with ❤️ using C#, WPF, and .NET 8.
+
+If you found this project useful, consider giving the repository a ⭐.
+
+</p>
