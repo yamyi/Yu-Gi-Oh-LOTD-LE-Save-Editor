@@ -74,11 +74,13 @@ public partial class CardSearchView : UserControl
         RaceCombo.ItemsSource = new[] { "All Races" }.Concat(AppContext.CardDb.DistinctRaces()).ToList();
         ArchetypeCombo.ItemsSource = new[] { "All Archetypes" }.Concat(AppContext.CardDb.DistinctArchetypes()).ToList();
         BanStatusCombo.ItemsSource = new[] { "All Ban Statuses", "Forbidden", "Limited", "Semi-Limited", "Unlimited" };
+        SortCombo.ItemsSource = CardSorting.Options;
         TypeCombo.SelectedIndex = 0;
         AttributeCombo.SelectedIndex = 0;
         RaceCombo.SelectedIndex = 0;
         ArchetypeCombo.SelectedIndex = 0;
         BanStatusCombo.SelectedIndex = 0;
+        SortCombo.SelectedIndex = 0; // triggers SortCombo_SelectionChanged, which sets SortDirectionToggle's default
 
         _suppressFilterEvents = false;
     }
@@ -94,6 +96,22 @@ public partial class CardSearchView : UserControl
     private void Filter_Changed(object sender, SelectionChangedEventArgs e) => RefreshResults();
     private void Filter_Changed(object sender, RoutedEventArgs e) => RefreshResults();
 
+    /// <summary>Separate from the generic Filter_Changed above - changing
+    /// the sort key itself resets SortDirectionToggle to that key's
+    /// sensible default (CardSorting.DefaultAscending) before refreshing,
+    /// so switching from "Name" to "ATK" doesn't leave it stuck ascending
+    /// (lowest ATK first) just because that happened to be Name's
+    /// direction. Unconditional (not gated on _suppressFilterEvents) since
+    /// setting IsChecked here is just UI state, not a query re-run -
+    /// RefreshResults still no-ops on its own during suppression.</summary>
+    private void SortCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        SortDirectionToggle.IsChecked = CardSorting.DefaultAscending(SortCombo.SelectedItem as string);
+        RefreshResults();
+    }
+
+    private void SortDirectionToggle_Click(object sender, RoutedEventArgs e) => RefreshResults();
+
     private void ClearFilters_Click(object sender, RoutedEventArgs e)
     {
         _suppressFilterEvents = true;
@@ -105,11 +123,17 @@ public partial class CardSearchView : UserControl
         BanStatusCombo.SelectedIndex = 0;
         MinLevelBox.Text = string.Empty;
         MaxLevelBox.Text = string.Empty;
+        MinRankBox.Text = string.Empty;
+        MaxRankBox.Text = string.Empty;
+        MinLinkBox.Text = string.Empty;
+        MaxLinkBox.Text = string.Empty;
         MinAtkBox.Text = string.Empty;
         MaxAtkBox.Text = string.Empty;
         MinDefBox.Text = string.Empty;
         MaxDefBox.Text = string.Empty;
         SearchDescCheckBox.IsChecked = true; // matches the default in XAML - description search is on by default
+        SortCombo.SelectedIndex = 0;
+        FavoritesOnlyCheckBox.IsChecked = false;
         _suppressFilterEvents = false;
 
         RefreshResults();
@@ -127,10 +151,17 @@ public partial class CardSearchView : UserControl
             race: ComboFilterValue(RaceCombo),
             archetype: ComboFilterValue(ArchetypeCombo),
             minLevel: ParseInt(MinLevelBox.Text), maxLevel: ParseInt(MaxLevelBox.Text),
+            minRank: ParseInt(MinRankBox.Text), maxRank: ParseInt(MaxRankBox.Text),
+            minLinkVal: ParseInt(MinLinkBox.Text), maxLinkVal: ParseInt(MaxLinkBox.Text),
             minAtk: ParseInt(MinAtkBox.Text), maxAtk: ParseInt(MaxAtkBox.Text),
             minDef: ParseInt(MinDefBox.Text), maxDef: ParseInt(MaxDefBox.Text),
             banStatus: ComboFilterValue(BanStatusCombo),
             searchDescription: SearchDescCheckBox.IsChecked == true);
+
+        if (FavoritesOnlyCheckBox.IsChecked == true)
+            results = results.Where(c => FavoritesStore.IsFavorite(c.Id));
+
+        results = results.Sort(SortCombo.SelectedItem as string, SortDirectionToggle.IsChecked == true);
 
         var list = results.Take(ResultCap).ToList();
 
@@ -171,9 +202,19 @@ public partial class CardSearchView : UserControl
     {
         _previewCard = card;
         PreviewPlaceholder.Visibility = Visibility.Collapsed;
+        PreviewContent.Visibility = Visibility.Visible;
         PreviewName.Text = card.Name;
+        PreviewFavoriteToggle.IsChecked = FavoritesStore.IsFavorite(card.Id);
         PreviewPasscode.Text = CardPreviewFormatter.Passcode(card);
-        PreviewTypeRace.Text = CardPreviewFormatter.TypeRace(card);
+        SetOptionalLine(PreviewOwned, CardPreviewFormatter.OwnedCount(card));
+        SetOptionalLine(PreviewRaceText, CardPreviewFormatter.RaceText(card));
+        PreviewAttributeText.Text = CardPreviewFormatter.AttributeOrSubTypeText(card);
+        PreviewTypeIcon.Source = card.IsMonster
+            ? AttributeTypeIconProvider.TypeIcon(card.Race)
+            : AttributeTypeIconProvider.CardTypeIcon(card.Type);
+        PreviewAttributeIcon.Source = card.IsMonster
+            ? AttributeTypeIconProvider.AttributeIcon(card.Attribute)
+            : AttributeTypeIconProvider.SubTypeIcon(card.HumanReadableCardType);
         SetOptionalLine(PreviewMonsterType, CardPreviewFormatter.MonsterType(card));
         SetOptionalLine(PreviewArchetype, CardPreviewFormatter.Archetype(card));
 
@@ -193,6 +234,7 @@ public partial class CardSearchView : UserControl
         SetOptionalLine(PreviewLinkMarkers, CardPreviewFormatter.LinkMarkers(card));
         SetOptionalLine(PreviewBanStatus, CardPreviewFormatter.BanStatus(card));
         SetOptionalLine(PreviewShop, CardPreviewFormatter.ShopInfo(card));
+        SetOptionalLine(PreviewDuelistChallenge, CardPreviewFormatter.DuelistChallengeInfo(card));
 
         PreviewDesc.Text = card.Desc;
         ViewOnYgoprodeckButton.IsEnabled = !string.IsNullOrWhiteSpace(card.YgoprodeckUrl);
@@ -210,9 +252,12 @@ public partial class CardSearchView : UserControl
     }
 
     /// <summary>Same optional-field collapse helper as DeckEditorView -
-    /// hides a TextBlock entirely (rather than leaving it visible-but-empty)
-    /// when the given card has nothing to show for that field.</summary>
-    private static void SetOptionalLine(TextBlock block, string text)
+    /// hides the field entirely (rather than leaving it visible-but-empty)
+    /// when the given card has nothing to show for that field. Takes a
+    /// TextBox, not TextBlock - every preview field is a chrome-less
+    /// read-only TextBox now (see SelectableTextStyle) so its text can be
+    /// selected/copied like any other text in the app.</summary>
+    private static void SetOptionalLine(TextBox block, string text)
     {
         block.Text = text;
         block.Visibility = string.IsNullOrEmpty(text) ? Visibility.Collapsed : Visibility.Visible;
@@ -264,5 +309,23 @@ public partial class CardSearchView : UserControl
     {
         if (e.ClickCount != 1 || _previewCard == null) return;
         ImageViewer.Show(Window.GetWindow(this), PreviewImage.Source, _previewCard.Name);
+    }
+
+    /// <summary>Toggling the star in the preview panel writes straight to
+    /// FavoritesStore (the preview isn't backed by a CardTileViewModel), then
+    /// syncs any matching tile(s) already showing in ResultCards so a
+    /// result-grid star doesn't sit stale until the next search refresh -
+    /// CardTileViewModel.IsFavorite's own setter also writes to
+    /// FavoritesStore, but that's a harmless no-op re-write of the same
+    /// value, not a second toggle.</summary>
+    private void PreviewFavoriteToggle_Click(object sender, RoutedEventArgs e)
+    {
+        if (_previewCard == null) return;
+
+        bool value = PreviewFavoriteToggle.IsChecked == true;
+        FavoritesStore.SetFavorite(_previewCard.Id, value);
+
+        foreach (var vm in ResultCards.Where(t => t.Card.Id == _previewCard.Id))
+            vm.IsFavorite = value;
     }
 }

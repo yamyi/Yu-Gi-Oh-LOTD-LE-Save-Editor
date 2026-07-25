@@ -303,6 +303,222 @@
         <Setter Property="Padding" Value="12" />
     </Style>
 
+    <!-- ── Card preview panel grouping (Card Search + Deck Editor) ─────────────
+         The preview panel packs in a lot of unrelated facts (identity, live
+         stats, legality/collection status, where to farm the card, rules
+         text) - these three pieces give it visual structure: a small
+         uppercase label to open each group, a thin rule to close the
+         previous one, and a colored pill for the two "glanceable" status
+         facts (ban status, owned count) so they read as a badge instead of
+         just more paragraph text. ─────────────────────────────────────────── -->
+    <Style x:Key="PreviewSectionHeaderStyle" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="Segoe UI" />
+        <Setter Property="FontSize" Value="10" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="Foreground" Value="{StaticResource AccentDimBrush}" />
+        <Setter Property="Margin" Value="0,0,0,4" />
+    </Style>
+
+    <Style x:Key="PreviewDividerStyle" TargetType="Border">
+        <Setter Property="Height" Value="1" />
+        <Setter Property="Background" Value="{StaticResource AccentDividerBrush}" />
+        <Setter Property="Margin" Value="0,12,0,10" />
+    </Style>
+
+    <!-- ── Collapsible filter-panel section (Card Search / Deck Editor's
+         FILTER BY / STATS / SORT & VIEW groups) ────────────────────────────
+         A retemplated Expander rather than a plain Grid.RowDefinitions
+         collapse - Expander already tracks its own open/closed state and
+         needs nothing from code-behind, matching the "no runtime control
+         creation" rule the same way ComboBoxStyle's full reskin does.
+         Visually it's the same small uppercase label + thin rule
+         PreviewSectionHeaderStyle/PreviewDividerStyle already establish,
+         just clickable, with a chevron that flips to show state. Content is
+         only realized (Visibility) when expanded - collapsing a section
+         hands its vertical space straight back to the results grid below,
+         which is the whole point. -->
+    <Style x:Key="FilterSectionExpanderStyle" TargetType="Expander">
+        <Setter Property="IsExpanded" Value="True" />
+        <Setter Property="Margin" Value="0,0,0,10" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Expander">
+                    <DockPanel>
+                        <ToggleButton x:Name="HeaderToggle" DockPanel.Dock="Top"
+                                      IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                      Background="Transparent" BorderThickness="0" Padding="0" Cursor="Hand"
+                                      HorizontalContentAlignment="Stretch" FocusVisualStyle="{x:Null}">
+                            <ToggleButton.Template>
+                                <ControlTemplate TargetType="ToggleButton">
+                                    <StackPanel Background="Transparent">
+                                        <Grid Margin="0,0,0,4">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock x:Name="Arrow" Grid.Column="0" Text="&#9662;" FontFamily="Segoe UI"
+                                                       FontSize="9" Foreground="{StaticResource AccentDimBrush}"
+                                                       VerticalAlignment="Center" Margin="0,0,6,0" />
+                                            <TextBlock Grid.Column="1"
+                                                       Text="{Binding Header, RelativeSource={RelativeSource AncestorType=Expander}}"
+                                                       FontFamily="Segoe UI" FontSize="10" FontWeight="Bold"
+                                                       Foreground="{StaticResource AccentDimBrush}" VerticalAlignment="Center" />
+                                        </Grid>
+                                        <Border Style="{StaticResource PreviewDividerStyle}" Margin="0,0,0,0" />
+                                    </StackPanel>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsChecked" Value="False">
+                                            <Setter TargetName="Arrow" Property="Text" Value="&#9656;" />
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </ToggleButton.Template>
+                        </ToggleButton>
+                        <ContentPresenter x:Name="ExpanderContent" DockPanel.Dock="Top" Margin="0,0,0,4" />
+                    </DockPanel>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsExpanded" Value="False">
+                            <Setter TargetName="ExpanderContent" Property="Visibility" Value="Collapsed" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Colored badge for Ban Status / Owned - Background is bound per-
+         instance (BanStatusBrushConverter for one, a fixed brush for the
+         other), this style only owns the shared shape/spacing/text look. -->
+    <Style x:Key="PreviewPillStyle" TargetType="Border">
+        <Setter Property="CornerRadius" Value="{StaticResource PillRadius}" />
+        <Setter Property="Padding" Value="8,3" />
+        <Setter Property="HorizontalAlignment" Value="Left" />
+    </Style>
+
+    <Style x:Key="PreviewPillTextStyle" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="Segoe UI" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+
+    <!-- ── Selectable preview text (name, passcode, description, etc.) ─────────
+         A plain TextBlock can't be selected/copied at all in WPF - this is
+         the standard workaround: a read-only, chrome-less TextBox styled to
+         be visually identical to a TextBlock (no border/background/padding,
+         no editing caret blink beyond the read-only I-beam, no dotted focus
+         rectangle) so every card-preview field can still be Ctrl+C'd or
+         right-click-copied like normal text, without looking any different
+         from before. Font/Foreground/TextWrapping/Margin are still set per
+         instance, same as when these were TextBlocks. -->
+    <Style x:Key="SelectableTextStyle" TargetType="TextBox">
+        <Setter Property="IsReadOnly" Value="True" />
+        <Setter Property="IsReadOnlyCaretVisible" Value="True" />
+        <Setter Property="IsUndoEnabled" Value="False" />
+        <Setter Property="AcceptsReturn" Value="False" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Cursor" Value="IBeam" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="SelectionBrush" Value="{StaticResource AccentBrush}" />
+    </Style>
+
+    <!-- Same selectable-TextBox treatment as SelectableTextStyle, but for the
+         Ban Status / Owned pills specifically - PreviewPillTextStyle (below)
+         targets TextBlock, which can't be applied to the TextBox those pills
+         were converted to, so this is its TextBox equivalent instead of a
+         second Style property on the same element. -->
+    <Style x:Key="PreviewPillTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource SelectableTextStyle}">
+        <Setter Property="FontFamily" Value="Segoe UI" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+
+    <!-- ── Favorite star toggle (browse tiles + Card Preview) ──────────────────
+         A plain glyph, not an image asset. On a tile, IsChecked two-way binds
+         straight to CardTileViewModel.IsFavorite (FavoritesStore-backed); in
+         the preview panel it's set/read in code-behind instead, since the
+         preview isn't backed by a CardTileViewModel (see
+         CardSearchView.xaml.cs/DeckEditorView.xaml.cs's
+         ShowPreviewAsync/PreviewFavoriteToggle_Click). Width/Height are
+         template-bound so a per-instance Setter (the preview's is bigger
+         than a tile's corner badge) actually takes effect. The
+         Style.Triggers below swap it from a dim outline star to the solid
+         accent-colored one instead of needing two separate icon files. -->
+    <Style x:Key="FavoriteToggleStyle" TargetType="ToggleButton">
+        <Setter Property="Content" Value="&#9733;" />
+        <Setter Property="Width" Value="16" />
+        <Setter Property="Height" Value="16" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Foreground" Value="#66FFFFFF" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border Background="#59000000" CornerRadius="7"
+                            Width="{TemplateBinding Width}" Height="{TemplateBinding Height}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        <Style.Triggers>
+            <Trigger Property="IsChecked" Value="True">
+                <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+            </Trigger>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Foreground" Value="{StaticResource AccentHoverBrush}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- ── Sort direction toggle (Card Search / Deck Editor SORT row) ──────────
+         Sits next to SortCombo - unchecked (default) = descending (▼),
+         checked = ascending (▲). CardSorting.DefaultAscending picks a
+         sensible starting state whenever the sort key itself changes (see
+         SortCombo_SelectionChanged in code-behind); the user can still flip
+         it manually afterward, same as clicking a spreadsheet column
+         header's sort arrow twice. -->
+    <Style x:Key="SortDirectionToggleStyle" TargetType="ToggleButton">
+        <Setter Property="Content" Value="&#9660;" />
+        <Setter Property="Width" Value="30" />
+        <Setter Property="Height" Value="30" />
+        <Setter Property="FontSize" Value="10" />
+        <Setter Property="Background" Value="{StaticResource InputBgBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border x:Name="Chrome" Background="{TemplateBinding Background}"
+                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="4">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        <Style.Triggers>
+            <Trigger Property="IsChecked" Value="True">
+                <Setter Property="Content" Value="&#9650;" />
+                <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
     <!-- ── ComboBox (Card Search's Type/Attribute/Race/Archetype filters) ──────
          Stock WPF ComboBox is unstyled light-chrome by default and would
          clash badly with the rest of this dark theme, so it gets a full

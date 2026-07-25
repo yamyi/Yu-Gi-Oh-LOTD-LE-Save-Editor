@@ -20,6 +20,13 @@ namespace YuGiOhSaveEditor.Services
     /// </summary>
     public static class CardCollectionLayout
     {
+        /// <summary>The owned-count field is bits 0-2 of the raw byte (see
+        /// GetRawValue's doc comment) and the game never lets a card's count
+        /// exceed 3, even though 3 bits could technically hold up to 7 - used
+        /// wherever a "max possible copies" figure is needed (e.g. the Cards
+        /// tab's total-copies-owned counter).</summary>
+        public const byte MaxCountPerCard = 3;
+
         public static int GetNumCards(LotdSaveVersion v) => LotdSaveFormat.GetNumCards(v);
 
         /// <summary>

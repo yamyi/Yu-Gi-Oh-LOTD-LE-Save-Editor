@@ -11,14 +11,15 @@ namespace YuGiOhSaveEditor.Views;
 /// App-wide preferences page. Everything on screen (OfflineModeCheckBox,
 /// EnableCacheCheckBox, CacheSizeText, OpenCacheFolderButton,
 /// ClearCacheButton, CacheLimitBox, CacheLimitApplyButton, WarmCacheButton,
-/// CancelWarmCacheButton, WarmCacheStatusText, VersionText) is declared once
-/// in SettingsView.xaml; this class only ever reads/writes
-/// AppContext.State.IsOfflineMode/DiskCacheEnabled/CacheSizeLimitMB, calls
-/// CardImageProvider's cache helpers, opens the cache folder via UrlLauncher,
-/// and sets TextBlock/CheckBox/Button properties - no controls are built
-/// here. Each of the three preference-changing handlers also calls
-/// AppSettings.Save() so the change survives an app restart (AppSettings.Load()
-/// restores it in App.xaml.cs at startup).
+/// CancelWarmCacheButton, WarmCacheStatusText, ThemeCombo, RestartNowButton,
+/// ThemeRestartHintText, VersionText) is declared once in SettingsView.xaml;
+/// this class only ever reads/writes AppContext.State.IsOfflineMode/
+/// DiskCacheEnabled/CacheSizeLimitMB/ThemeName, calls CardImageProvider's
+/// cache helpers, opens the cache folder via UrlLauncher, and sets
+/// TextBlock/CheckBox/ComboBox/Button properties - no controls are built
+/// here. Each preference-changing handler also calls AppSettings.Save() so
+/// the change survives an app restart (AppSettings.Load() restores it in
+/// App.xaml.cs at startup).
 /// </summary>
 public partial class SettingsView : UserControl
 {
@@ -46,12 +47,25 @@ public partial class SettingsView : UserControl
         };
     }
 
+    // Display name <-> AppState.ThemeName - ThemeCombo shows the former,
+    // everything persisted/compared (AppState, AppSettings.json,
+    // App.ApplyTheme) uses the latter.
+    private static readonly (string Display, string ThemeName)[] ThemeOptions =
+    {
+        ("Master Duel", "MasterDuel"),
+        ("Duel Links", "DuelLinks"),
+    };
+
     private void RefreshFromState()
     {
         _suppressEvents = true;
         OfflineModeCheckBox.IsChecked = AppContext.State.IsOfflineMode;
         EnableCacheCheckBox.IsChecked = AppContext.State.DiskCacheEnabled;
         CacheLimitBox.Text = AppContext.State.CacheSizeLimitMB.ToString();
+
+        if (ThemeCombo.ItemsSource == null) ThemeCombo.ItemsSource = ThemeOptions.Select(t => t.Display).ToList();
+        int themeIndex = Array.FindIndex(ThemeOptions, t => t.ThemeName == AppContext.State.ThemeName);
+        ThemeCombo.SelectedIndex = themeIndex >= 0 ? themeIndex : 0;
         _suppressEvents = false;
 
         CacheLimitBox.IsEnabled = AppContext.State.DiskCacheEnabled;
@@ -81,6 +95,46 @@ public partial class SettingsView : UserControl
     {
         var version = Assembly.GetExecutingAssembly().GetName().Version;
         return version == null ? "-" : version.ToString(3);
+    }
+
+    /// <summary>Persists the new theme choice immediately (same
+    /// "no separate apply step" pattern as the other preferences here), but
+    /// - unlike them - can't take effect on the running window (see
+    /// App.OnStartup's comment on why StaticResource brushes can't be
+    /// swapped live). Reveals RESTART NOW plus an explanatory line instead;
+    /// picking the theme that's already active just hides them again.</summary>
+    private void ThemeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_suppressEvents) return;
+        if (ThemeCombo.SelectedIndex < 0) return;
+
+        string newTheme = ThemeOptions[ThemeCombo.SelectedIndex].ThemeName;
+        bool changed = newTheme != AppContext.State.ThemeName;
+
+        AppContext.State.ThemeName = newTheme;
+        AppSettings.Save();
+
+        RestartNowButton.Visibility = changed ? Visibility.Visible : Visibility.Collapsed;
+        ThemeRestartHintText.Visibility = changed ? Visibility.Visible : Visibility.Collapsed;
+        ThemeRestartHintText.Text = changed
+            ? "Saved. Restart the app for the new look to take effect."
+            : string.Empty;
+    }
+
+    /// <summary>Relaunches the app from its own executable, then shuts this
+    /// instance down - the same "soft restart" idea the WinForms build's
+    /// Program.cs used for a theme change, ported here since WPF has no way
+    /// to re-resolve already-parsed StaticResource brushes on a running
+    /// window. Doesn't try to reopen whatever save file was loaded - that's
+    /// exactly the same "start fresh" experience the app already gives on
+    /// every normal launch.</summary>
+    private void RestartNowButton_Click(object sender, RoutedEventArgs e)
+    {
+        string? exePath = Environment.ProcessPath;
+        if (!string.IsNullOrEmpty(exePath))
+            System.Diagnostics.Process.Start(exePath);
+
+        Application.Current.Shutdown();
     }
 
     private void OfflineModeCheckBox_Changed(object sender, RoutedEventArgs e)

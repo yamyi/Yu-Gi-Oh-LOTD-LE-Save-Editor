@@ -30,6 +30,7 @@
         <controls:RarityBrushConverter x:Key="RarityBrushConverter" />
         <controls:BanIconConverter x:Key="BanIconConverter" />
         <controls:BanStatusBrushConverter x:Key="BanStatusBrushConverter" />
+        <controls:OwnedCountBrushConverter x:Key="OwnedCountBrushConverter" />
         <controls:NullToVisibilityConverter x:Key="NullToVisibilityConverter" />
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
 
@@ -76,6 +77,10 @@
                            Width="15" Height="15" Stretch="Uniform"
                            HorizontalAlignment="Right" VerticalAlignment="Top" Margin="3"
                            ToolTip="{Binding BanStatus}" />
+                    <ToggleButton Style="{StaticResource FavoriteToggleStyle}"
+                                  IsChecked="{Binding IsFavorite, Mode=TwoWay}"
+                                  HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="3"
+                                  ToolTip="Favorite" />
                 </Grid>
             </Border>
         </DataTemplate>
@@ -234,6 +239,12 @@
                                        FontFamily="Segoe UI" FontSize="12" TextWrapping="Wrap"
                                        Foreground="{StaticResource TextMutedBrush}" />
 
+                            <!-- Everything below is real card data - collapsed until
+                                 ShowPreviewAsync has something to put in it, so the
+                                 STATS/STATUS/ACQUISITION/TEXT group headers below don't
+                                 float above nothing while PreviewPlaceholder is showing. -->
+                            <StackPanel x:Name="PreviewContent" Visibility="Collapsed">
+
                             <!-- Enlarged from 216 - card art was previously
                                  width-capped well short of the panel's own
                                  216px usable width, leaving letterboxed
@@ -259,43 +270,119 @@
                                 </Grid>
                             </Border>
 
-                            <TextBlock x:Name="PreviewName" FontFamily="Segoe UI" FontSize="16" FontWeight="Bold"
-                                       Foreground="{StaticResource TextCardNameBrush}" TextWrapping="Wrap"
-                                       Margin="0,10,0,2" />
-                            <TextBlock x:Name="PreviewPasscode" FontFamily="Segoe UI" FontSize="10.5"
-                                       Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,4" />
-                            <TextBlock x:Name="PreviewTypeRace" FontFamily="Segoe UI" FontSize="11.5"
-                                       Foreground="{StaticResource TextInfoBrush}" TextWrapping="Wrap" />
-                            <TextBlock x:Name="PreviewMonsterType" FontFamily="Segoe UI" FontSize="11.5"
-                                       Foreground="{StaticResource TextInfoBrush}" TextWrapping="Wrap" />
-                            <TextBlock x:Name="PreviewArchetype" FontFamily="Segoe UI" FontSize="11"
-                                       Foreground="{StaticResource TextMutedBrush}" TextWrapping="Wrap" Margin="0,2,0,0" />
-
-                            <StackPanel x:Name="PreviewStatsPanel" Orientation="Horizontal" Margin="0,8,0,0" Visibility="Collapsed">
-                                <TextBlock x:Name="PreviewLevel" FontFamily="Segoe UI" FontSize="11.5" FontWeight="Bold"
-                                           Foreground="{StaticResource TextInfoBrush}" Margin="0,0,12,0" />
-                                <TextBlock x:Name="PreviewAtk" FontFamily="Segoe UI" FontSize="11.5" FontWeight="Bold"
-                                           Foreground="{StaticResource StatAtkBrush}" Margin="0,0,12,0" />
-                                <TextBlock x:Name="PreviewDef" FontFamily="Segoe UI" FontSize="11.5" FontWeight="Bold"
-                                           Foreground="{StaticResource StatDefBrush}" />
+                            <!-- ── Identity: name (+ favorite), passcode, type line ──────── -->
+                            <Grid Margin="0,10,0,2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox x:Name="PreviewName" Grid.Column="0" Style="{StaticResource SelectableTextStyle}"
+                                         FontFamily="Segoe UI" FontSize="17" FontWeight="Bold"
+                                         Foreground="{StaticResource TextCardNameBrush}" TextWrapping="Wrap" />
+                                <!-- Set/read in code-behind (ShowPreviewAsync /
+                                     PreviewFavoriteToggle_Click), same as
+                                     CardSearchView's own preview panel. -->
+                                <ToggleButton x:Name="PreviewFavoriteToggle" Grid.Column="1"
+                                              Style="{StaticResource FavoriteToggleStyle}" Width="24" Height="24" FontSize="15"
+                                              VerticalAlignment="Top" Margin="8,2,0,0"
+                                              Click="PreviewFavoriteToggle_Click" ToolTip="Favorite" />
+                            </Grid>
+                            <TextBox x:Name="PreviewPasscode" Style="{StaticResource SelectableTextStyle}"
+                                     FontFamily="Segoe UI" FontSize="10.5"
+                                     Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,6" />
+                            <!-- Monsters: (Type icon)(Race text) / (Attribute icon)(Attribute text).
+                                 Spell/Trap: (Spell-or-Trap icon)(Subtype icon)(Subtype text) - the
+                                 first icon has no text of its own and the separator collapses along
+                                 with PreviewRaceText, since ShowPreviewAsync leaves both empty for
+                                 non-monsters. Same 5 elements serve both layouts. -->
+                            <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                <Image x:Name="PreviewTypeIcon" Width="18" Height="18" Margin="0,0,4,0"
+                                       Stretch="Uniform" VerticalAlignment="Center" />
+                                <TextBox x:Name="PreviewRaceText" Style="{StaticResource SelectableTextStyle}"
+                                         FontFamily="Segoe UI" FontSize="11.5"
+                                         Foreground="{StaticResource TextInfoBrush}" VerticalAlignment="Center"
+                                         Margin="0,0,6,0" />
+                                <TextBlock x:Name="PreviewTypeSeparator" Text="/" FontFamily="Segoe UI" FontSize="11.5"
+                                           Foreground="{StaticResource TextInfoBrush}" VerticalAlignment="Center"
+                                           Margin="0,0,6,0" Visibility="{Binding Visibility, ElementName=PreviewRaceText}" />
+                                <Image x:Name="PreviewAttributeIcon" Width="18" Height="18" Margin="0,0,4,0"
+                                       Stretch="Uniform" VerticalAlignment="Center" />
+                                <TextBox x:Name="PreviewAttributeText" Style="{StaticResource SelectableTextStyle}"
+                                         FontFamily="Segoe UI" FontSize="11.5"
+                                         Foreground="{StaticResource TextInfoBrush}" TextWrapping="Wrap"
+                                         VerticalAlignment="Center" />
                             </StackPanel>
+                            <TextBox x:Name="PreviewMonsterType" Style="{StaticResource SelectableTextStyle}"
+                                     FontFamily="Segoe UI" FontSize="11.5"
+                                     Foreground="{StaticResource TextInfoBrush}" TextWrapping="Wrap" />
+                            <TextBox x:Name="PreviewArchetype" Style="{StaticResource SelectableTextStyle}"
+                                     FontFamily="Segoe UI" FontSize="11"
+                                     Foreground="{StaticResource TextMutedBrush}" TextWrapping="Wrap" Margin="0,2,0,0" />
 
-                            <TextBlock x:Name="PreviewScale" FontFamily="Segoe UI" FontSize="11" FontWeight="Bold"
-                                       Foreground="{StaticResource TextInfoBrush}" Margin="0,4,0,0" />
-                            <TextBlock x:Name="PreviewLinkMarkers" FontFamily="Segoe UI" FontSize="11" FontWeight="Bold"
-                                       Foreground="{StaticResource TextInfoBrush}" TextWrapping="Wrap" Margin="0,4,0,0" />
-                            <TextBlock x:Name="PreviewBanStatus" FontFamily="Segoe UI" FontSize="11" FontWeight="Bold"
-                                       Foreground="{Binding Text, RelativeSource={RelativeSource Self}, Converter={StaticResource BanStatusBrushConverter}}"
-                                       TextWrapping="Wrap" Margin="0,4,0,0" />
-                            <TextBlock x:Name="PreviewShop" FontFamily="Segoe UI" FontSize="11"
-                                       Foreground="{StaticResource TextMutedBrush}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                            <!-- ── Stats: only takes up space for monsters - the header/rule
+                                 mirror PreviewStatsPanel's own Visibility via ElementName so
+                                 a Spell/Trap preview doesn't show an empty "STATS" group. ── -->
+                            <TextBlock Text="STATS" Style="{StaticResource PreviewSectionHeaderStyle}" Margin="0,14,0,4"
+                                       Visibility="{Binding Visibility, ElementName=PreviewStatsPanel}" />
+                            <Border Style="{StaticResource PreviewDividerStyle}" Margin="0,0,0,10"
+                                    Visibility="{Binding Visibility, ElementName=PreviewStatsPanel}" />
+                            <StackPanel x:Name="PreviewStatsPanel" Orientation="Horizontal" Visibility="Collapsed">
+                                <TextBox x:Name="PreviewLevel" Style="{StaticResource SelectableTextStyle}"
+                                         FontFamily="Segoe UI" FontSize="11.5" FontWeight="Bold"
+                                         Foreground="{StaticResource TextInfoBrush}" Margin="0,0,12,0" />
+                                <TextBox x:Name="PreviewAtk" Style="{StaticResource SelectableTextStyle}"
+                                         FontFamily="Segoe UI" FontSize="11.5" FontWeight="Bold"
+                                         Foreground="{StaticResource StatAtkBrush}" Margin="0,0,12,0" />
+                                <TextBox x:Name="PreviewDef" Style="{StaticResource SelectableTextStyle}"
+                                         FontFamily="Segoe UI" FontSize="11.5" FontWeight="Bold"
+                                         Foreground="{StaticResource StatDefBrush}" />
+                            </StackPanel>
+                            <TextBox x:Name="PreviewScale" Style="{StaticResource SelectableTextStyle}"
+                                     FontFamily="Segoe UI" FontSize="11" FontWeight="Bold"
+                                     Foreground="{StaticResource TextInfoBrush}" Margin="0,6,0,0" />
+                            <TextBox x:Name="PreviewLinkMarkers" Style="{StaticResource SelectableTextStyle}"
+                                     FontFamily="Segoe UI" FontSize="11" FontWeight="Bold"
+                                     Foreground="{StaticResource TextInfoBrush}" TextWrapping="Wrap" Margin="0,6,0,0" />
 
-                            <TextBlock x:Name="PreviewDesc" FontFamily="Segoe UI" FontSize="11.5" TextWrapping="Wrap"
-                                       Foreground="{StaticResource TextDescriptionBrush}" Margin="0,10,0,0" />
+                            <!-- ── Status: ban legality + collection count as glance-able
+                                 colored pills instead of plain text, side by side. ──────── -->
+                            <TextBlock Text="STATUS" Style="{StaticResource PreviewSectionHeaderStyle}" Margin="0,14,0,4" />
+                            <Border Style="{StaticResource PreviewDividerStyle}" Margin="0,0,0,10" />
+                            <WrapPanel>
+                                <Border Style="{StaticResource PreviewPillStyle}" Margin="0,0,8,8"
+                                        Background="{Binding Text, ElementName=PreviewBanStatus, Converter={StaticResource BanStatusBrushConverter}}"
+                                        Visibility="{Binding Visibility, ElementName=PreviewBanStatus}">
+                                    <TextBox x:Name="PreviewBanStatus" Style="{StaticResource PreviewPillTextBoxStyle}"
+                                             Foreground="{StaticResource AccentFgBrush}" TextWrapping="Wrap" />
+                                </Border>
+                                <Border Style="{StaticResource PreviewPillStyle}" Margin="0,0,0,8"
+                                        Background="{Binding Text, ElementName=PreviewOwned, Converter={StaticResource OwnedCountBrushConverter}}"
+                                        Visibility="{Binding Visibility, ElementName=PreviewOwned}">
+                                    <TextBox x:Name="PreviewOwned" Style="{StaticResource PreviewPillTextBoxStyle}"
+                                             Foreground="{StaticResource AccentFgBrush}" />
+                                </Border>
+                            </WrapPanel>
+
+                            <!-- ── Acquisition: where to farm this specific card. ─────────── -->
+                            <TextBlock Text="ACQUISITION" Style="{StaticResource PreviewSectionHeaderStyle}" Margin="0,14,0,4" />
+                            <Border Style="{StaticResource PreviewDividerStyle}" Margin="0,0,0,10" />
+                            <TextBox x:Name="PreviewShop" Style="{StaticResource SelectableTextStyle}"
+                                     FontFamily="Segoe UI" FontSize="11.5" FontWeight="SemiBold"
+                                     Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,0,0,4" />
+                            <TextBox x:Name="PreviewDuelistChallenge" Style="{StaticResource SelectableTextStyle}"
+                                     FontFamily="Segoe UI" FontSize="11.5" FontWeight="SemiBold"
+                                     Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" />
+
+                            <TextBlock Text="TEXT" Style="{StaticResource PreviewSectionHeaderStyle}" Margin="0,14,0,4" />
+                            <Border Style="{StaticResource PreviewDividerStyle}" Margin="0,0,0,8" />
+                            <TextBox x:Name="PreviewDesc" Style="{StaticResource SelectableTextStyle}"
+                                     FontFamily="Segoe UI" FontSize="11.5" TextWrapping="Wrap"
+                                     Foreground="{StaticResource TextDescriptionBrush}" />
 
                             <Button x:Name="ViewOnYgoprodeckButton" Content="VIEW ON YGOPRODECK"
                                     Style="{StaticResource SecondaryButtonStyle}" Margin="0,16,0,0"
                                     IsEnabled="False" Click="ViewOnYgoprodeckButton_Click" />
+                            </StackPanel>
                         </StackPanel>
                     </ScrollViewer>
                 </DockPanel>
@@ -331,6 +418,20 @@
                         <Button Grid.Column="4" Content="SAVE DECK" Width="140"
                                 Style="{StaticResource PrimaryButtonStyle}" Click="SaveDeckButton_Click" />
                     </Grid>
+
+                    <!-- Import/export the deck currently being edited as a
+                         standalone .ydk file - independent of DeckSlotsView's
+                         own Import/Export (which work off a selected slot,
+                         not whatever's actively open here). Import replaces
+                         Main/Extra/Side in the editor only, same as every
+                         other add/remove on this page - nothing is written
+                         to the save file until SAVE DECK is pressed. -->
+                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,10">
+                        <Button Content="IMPORT .YDK" Width="126" Margin="0,0,10,0"
+                                Style="{StaticResource SecondaryButtonStyle}" Click="ImportYdkButton_Click" />
+                        <Button Content="EXPORT .YDK" Width="126"
+                                Style="{StaticResource SecondaryButtonStyle}" Click="ExportYdkButton_Click" />
+                    </StackPanel>
 
                     <!-- ── Deck stats ────────────────────────────────────────────
                          New (not in the WinForms build) - a compact type
@@ -483,84 +584,136 @@
                              Background="{StaticResource InputBgBrush}" Foreground="{StaticResource TextPrimaryBrush}"
                              BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
                              Padding="10,0" VerticalContentAlignment="Center" FontFamily="Segoe UI" FontSize="12"
-                             Margin="0,0,0,10" Tag="Search cards..."
+                             Margin="0,0,0,8" Tag="Search cards..."
                              TextChanged="Filter_TextChanged" />
+                    <CheckBox x:Name="SearchDescCheckBox" DockPanel.Dock="Top" Content="Search description"
+                              Style="{StaticResource CheckBoxStyle}"
+                              IsChecked="True" Margin="0,0,0,4"
+                              Checked="Filter_Changed" Unchecked="Filter_Changed" />
 
-                    <!-- ── Advanced filters ─────────────────────────────────────
-                         Same fields CardSearchView's filter panel offers, off
-                         CardDatabase.Filter's own parameters - just reflowed
-                         for this panel's much narrower (320px) column: a 2x2
-                         grid for Type/Attribute/Race/Archetype instead of one
-                         cramped row of four, and Level/ATK/DEF stacked one
-                         range per line instead of side by side. ──────────── -->
-                    <Grid DockPanel.Dock="Top" Margin="0,0,0,8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="8" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="8" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="8" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-                        <ComboBox x:Name="TypeCombo" Grid.Row="0" Grid.Column="0" Style="{StaticResource ComboBoxStyle}"
-                                  SelectionChanged="Filter_Changed" />
-                        <ComboBox x:Name="AttributeCombo" Grid.Row="0" Grid.Column="2" Style="{StaticResource ComboBoxStyle}"
-                                  SelectionChanged="Filter_Changed" />
-                        <ComboBox x:Name="RaceCombo" Grid.Row="2" Grid.Column="0" Style="{StaticResource ComboBoxStyle}"
-                                  SelectionChanged="Filter_Changed" />
-                        <ComboBox x:Name="ArchetypeCombo" Grid.Row="2" Grid.Column="2" Style="{StaticResource ComboBoxStyle}"
-                                  SelectionChanged="Filter_Changed" />
-                        <ComboBox x:Name="BanStatusCombo" Grid.Row="4" Grid.Column="0" Style="{StaticResource ComboBoxStyle}"
-                                  SelectionChanged="Filter_Changed" />
-                    </Grid>
+                    <!-- FILTER BY / STATS / SORT & VIEW are each a collapsible
+                         Expander (FilterSectionExpanderStyle) rather than a
+                         fixed header+content block - collapsing one hands its
+                         space straight back to the card list below, useful
+                         in this already-narrow column once a filter's dialed
+                         in. All three start expanded. -->
+                    <Expander DockPanel.Dock="Top" Header="FILTER BY" Style="{StaticResource FilterSectionExpanderStyle}">
+                        <!-- ── Advanced filters ─────────────────────────────────────
+                             Same fields CardSearchView's filter panel offers, off
+                             CardDatabase.Filter's own parameters - just reflowed
+                             for this panel's much narrower (320px) column: a 2x2
+                             grid for Type/Attribute/Race/Archetype instead of one
+                             cramped row of four, and Level/ATK/DEF stacked one
+                             range per line instead of side by side. ──────────── -->
+                        <Grid Margin="0,0,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="8" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="8" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="8" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <ComboBox x:Name="TypeCombo" Grid.Row="0" Grid.Column="0" Style="{StaticResource ComboBoxStyle}"
+                                      SelectionChanged="Filter_Changed" />
+                            <ComboBox x:Name="AttributeCombo" Grid.Row="0" Grid.Column="2" Style="{StaticResource ComboBoxStyle}"
+                                      SelectionChanged="Filter_Changed" />
+                            <ComboBox x:Name="RaceCombo" Grid.Row="2" Grid.Column="0" Style="{StaticResource ComboBoxStyle}"
+                                      SelectionChanged="Filter_Changed" />
+                            <ComboBox x:Name="ArchetypeCombo" Grid.Row="2" Grid.Column="2" Style="{StaticResource ComboBoxStyle}"
+                                      SelectionChanged="Filter_Changed" />
+                            <ComboBox x:Name="BanStatusCombo" Grid.Row="4" Grid.Column="0" Style="{StaticResource ComboBoxStyle}"
+                                      SelectionChanged="Filter_Changed" />
+                        </Grid>
+                    </Expander>
 
-                    <!-- Level / ATK / DEF ranges - one row per stat instead of
-                         CardSearchView's single wide row, since this column
-                         doesn't have room for all three side by side. -->
-                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,4">
-                        <TextBlock Text="LV" Width="30" FontFamily="Segoe UI" FontSize="11" FontWeight="Bold"
-                                   Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" />
-                        <TextBox x:Name="MinLevelBox" Style="{StaticResource RangeBoxStyle}" TextChanged="Filter_TextChanged" />
-                        <TextBlock Text="–" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" Margin="4,0" />
-                        <TextBox x:Name="MaxLevelBox" Style="{StaticResource RangeBoxStyle}" TextChanged="Filter_TextChanged" />
-                    </StackPanel>
-                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,4">
-                        <TextBlock Text="ATK" Width="30" FontFamily="Segoe UI" FontSize="11" FontWeight="Bold"
-                                   Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" />
-                        <TextBox x:Name="MinAtkBox" Style="{StaticResource RangeBoxStyle}" TextChanged="Filter_TextChanged" />
-                        <TextBlock Text="–" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" Margin="4,0" />
-                        <TextBox x:Name="MaxAtkBox" Style="{StaticResource RangeBoxStyle}" TextChanged="Filter_TextChanged" />
-                    </StackPanel>
-                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
-                        <TextBlock Text="DEF" Width="30" FontFamily="Segoe UI" FontSize="11" FontWeight="Bold"
-                                   Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" />
-                        <TextBox x:Name="MinDefBox" Style="{StaticResource RangeBoxStyle}" TextChanged="Filter_TextChanged" />
-                        <TextBlock Text="–" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" Margin="4,0" />
-                        <TextBox x:Name="MaxDefBox" Style="{StaticResource RangeBoxStyle}" TextChanged="Filter_TextChanged" />
-                    </StackPanel>
+                    <Expander DockPanel.Dock="Top" Header="STATS" Style="{StaticResource FilterSectionExpanderStyle}">
+                        <!-- Level / Rank / Link Rating / ATK / DEF ranges - one row
+                             per stat instead of CardSearchView's single wide row,
+                             since this column doesn't have room for them side by
+                             side. Level, Rank and Link Rating are separate
+                             filters (not one shared "Level" box) because Xyz
+                             monsters store their Rank in the Level field and
+                             Link monsters have no Level at all - see
+                             CardDatabase.Filter. -->
+                        <StackPanel Margin="0,0,0,4">
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <TextBlock Text="LV" Width="30" FontFamily="Segoe UI" FontSize="11" FontWeight="Bold"
+                                           Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" />
+                                <TextBox x:Name="MinLevelBox" Style="{StaticResource RangeBoxStyle}" TextChanged="Filter_TextChanged" />
+                                <TextBlock Text="–" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" Margin="4,0" />
+                                <TextBox x:Name="MaxLevelBox" Style="{StaticResource RangeBoxStyle}" TextChanged="Filter_TextChanged" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <TextBlock Text="RANK" Width="30" FontFamily="Segoe UI" FontSize="11" FontWeight="Bold"
+                                           Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" />
+                                <TextBox x:Name="MinRankBox" Style="{StaticResource RangeBoxStyle}" TextChanged="Filter_TextChanged" />
+                                <TextBlock Text="–" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" Margin="4,0" />
+                                <TextBox x:Name="MaxRankBox" Style="{StaticResource RangeBoxStyle}" TextChanged="Filter_TextChanged" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <TextBlock Text="LINK" Width="30" FontFamily="Segoe UI" FontSize="11" FontWeight="Bold"
+                                           Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" />
+                                <TextBox x:Name="MinLinkBox" Style="{StaticResource RangeBoxStyle}" TextChanged="Filter_TextChanged" />
+                                <TextBlock Text="–" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" Margin="4,0" />
+                                <TextBox x:Name="MaxLinkBox" Style="{StaticResource RangeBoxStyle}" TextChanged="Filter_TextChanged" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <TextBlock Text="ATK" Width="30" FontFamily="Segoe UI" FontSize="11" FontWeight="Bold"
+                                           Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" />
+                                <TextBox x:Name="MinAtkBox" Style="{StaticResource RangeBoxStyle}" TextChanged="Filter_TextChanged" />
+                                <TextBlock Text="–" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" Margin="4,0" />
+                                <TextBox x:Name="MaxAtkBox" Style="{StaticResource RangeBoxStyle}" TextChanged="Filter_TextChanged" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="DEF" Width="30" FontFamily="Segoe UI" FontSize="11" FontWeight="Bold"
+                                           Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" />
+                                <TextBox x:Name="MinDefBox" Style="{StaticResource RangeBoxStyle}" TextChanged="Filter_TextChanged" />
+                                <TextBlock Text="–" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" Margin="4,0" />
+                                <TextBox x:Name="MaxDefBox" Style="{StaticResource RangeBoxStyle}" TextChanged="Filter_TextChanged" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Expander>
 
-                    <!-- Search-description toggle + result count, then Clear
-                         Filters on its own row (rather than sharing a row
-                         with the checkbox like CardSearchView) - "CLEAR
-                         FILTERS" plus "Search description" together don't
-                         fit this column's width. -->
-                    <Grid DockPanel.Dock="Top" Margin="0,0,0,4">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <CheckBox x:Name="SearchDescCheckBox" Grid.Column="0" Content="Search description"
-                                  Style="{StaticResource CheckBoxStyle}" VerticalAlignment="Center"
-                                  IsChecked="True"
-                                  Checked="Filter_Changed" Unchecked="Filter_Changed" />
-                        <TextBlock x:Name="ResultCountText" Grid.Column="1" FontFamily="Segoe UI" FontSize="11"
-                                   Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center"
-                                   HorizontalAlignment="Right" />
-                    </Grid>
+                    <Expander DockPanel.Dock="Top" Header="SORT &amp; VIEW" Style="{StaticResource FilterSectionExpanderStyle}">
+                        <!-- Sort order - same CardSorting.Options list
+                             CardSearchView's SortCombo uses, plus
+                             SortDirectionToggle beside it (defaults per-key via
+                             CardSorting.DefaultAscending - see
+                             SortCombo_SelectionChanged). "Favorites only" gets
+                             its own row below, since this column isn't wide
+                             enough to fit all three side by side. -->
+                        <StackPanel Margin="0,0,0,4">
+                            <Grid Margin="0,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="6" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <ComboBox x:Name="SortCombo" Grid.Column="0" Style="{StaticResource ComboBoxStyle}"
+                                          SelectionChanged="SortCombo_SelectionChanged" />
+                                <ToggleButton x:Name="SortDirectionToggle" Grid.Column="2" Style="{StaticResource SortDirectionToggleStyle}"
+                                              Click="SortDirectionToggle_Click" ToolTip="Sort direction (ascending/descending)" />
+                            </Grid>
+                            <CheckBox x:Name="FavoritesOnlyCheckBox" Content="Favorites only"
+                                      Style="{StaticResource CheckBoxStyle}"
+                                      Checked="Filter_Changed" Unchecked="Filter_Changed" />
+                        </StackPanel>
+                    </Expander>
+
+                    <!-- ── Result count + Clear Filters - a status/action
+                         footer, not another filter group, so no section
+                         header here. Clear Filters keeps its own
+                         full-width row (rather than sharing one with the
+                         checkbox like CardSearchView) - it doesn't fit
+                         alongside anything else at this column width. ──── -->
+                    <Border DockPanel.Dock="Top" Style="{StaticResource PreviewDividerStyle}" Margin="0,0,0,8" />
+                    <TextBlock x:Name="ResultCountText" DockPanel.Dock="Top" FontFamily="Segoe UI" FontSize="11"
+                               Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,8" />
                     <Button DockPanel.Dock="Top" Content="CLEAR FILTERS" HorizontalAlignment="Stretch"
                             Style="{StaticResource DangerButtonStyle}" Margin="0,0,0,10" Click="ClearFilters_Click" />
 

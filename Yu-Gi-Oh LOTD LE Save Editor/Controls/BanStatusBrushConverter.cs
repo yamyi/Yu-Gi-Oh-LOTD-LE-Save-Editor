@@ -18,7 +18,7 @@ public sealed class BanStatusBrushConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
     {
-        string key = value as string switch
+        string key = (value as string) switch
         {
             "Forbidden" => "StatusIllegalBrush",
             "Limited" => "StatusWarningBrush",

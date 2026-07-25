@@ -57,6 +57,18 @@ public partial class MainWindow : Window
             SideNav.SelectedIndex = 1;
         };
 
+        // Single-file .ydk import (DeckSlotsView.ImportDeckButton_Click) -
+        // opens the parsed deck in Deck Editor as a pending, unsaved load
+        // instead of writing straight to the slot, same navigation pattern
+        // as EditCardsRequested above. Multi-file imports never raise this;
+        // they keep the original immediate-overwrite behavior and fire
+        // SaveDataChanged instead (wired below).
+        DeckSlotsPage.SingleDeckImportRequested += (_, import) =>
+        {
+            DeckEditorPage.LoadPendingDeck(import.Slot, import.Deck, import.SuggestedName);
+            SideNav.SelectedIndex = 1;
+        };
+
         // Import Deck / Save Deck both mutate AppContext.State.SaveBytes
         // directly - refresh the Save button's dirty state the same way any
         // other mutation does.
@@ -100,10 +112,36 @@ public partial class MainWindow : Window
         oldPage.BeginAnimation(OpacityProperty, fadeOut);
     }
 
+    // Reverting SideNav.SelectedIndex below (when the user declines to
+    // discard unsaved changes) re-raises this same event - _suppressNavGuard
+    // skips the gate on that re-entrant call so it doesn't just prompt again,
+    // and lets it fall through to ShowPage, which is a no-op anyway since
+    // the index isn't actually changing.
+    private bool _suppressNavGuard;
+
     private void SideNav_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
-        if (SideNav.SelectedIndex >= 0)
-            ShowPage(SideNav.SelectedIndex);
+        if (SideNav.SelectedIndex < 0) return;
+
+        // Index 1 = DeckEditorPage (see _pages' comment for the fixed order).
+        // Only relevant when it's the page actually being left - navigating
+        // *into* it (e.g. DeckSlotsPage.EditCardsRequested below) always has
+        // _currentPageIndex != 1 at this point, so it's never gated.
+        if (!_suppressNavGuard && _currentPageIndex == 1 && DeckEditorPage.HasUnsavedChanges)
+        {
+            var result = AppMessageBox.Show(this,
+                "This deck has unsaved changes. Switching tabs will discard them. Continue anyway?",
+                "Unsaved Changes", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            if (result != MessageBoxResult.Yes)
+            {
+                _suppressNavGuard = true;
+                SideNav.SelectedIndex = _currentPageIndex;
+                _suppressNavGuard = false;
+                return;
+            }
+        }
+
+        ShowPage(SideNav.SelectedIndex);
     }
 
     // ── Nav collapse ──────────────────────────────────────────────────────────

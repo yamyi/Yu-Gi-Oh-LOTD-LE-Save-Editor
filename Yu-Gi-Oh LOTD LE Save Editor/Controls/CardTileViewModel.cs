@@ -36,11 +36,30 @@ public sealed class CardTileViewModel : INotifyPropertyChanged
         }
     }
 
+    /// <summary>Backed by FavoritesStore (a small JSON file, not anything
+    /// per-save) rather than a plain field - the star toggle on a tile is a
+    /// two-way binding straight to this property (see FavoriteToggleStyle),
+    /// so setting it here is the one and only place a favorite actually
+    /// gets persisted.</summary>
+    private bool _isFavorite;
+    public bool IsFavorite
+    {
+        get => _isFavorite;
+        set
+        {
+            if (_isFavorite == value) return;
+            _isFavorite = value;
+            FavoritesStore.SetFavorite(Card.Id, value);
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsFavorite)));
+        }
+    }
+
     public CardTileViewModel(Card card)
     {
         Card = card;
         RarityTier = DeckEditorHelpers.GetRarityTier(card);
         BanStatus = LotdBanlist.GetStatus(card.LotdId);
+        _isFavorite = FavoritesStore.IsFavorite(card.Id);
     }
 
     public async Task LoadImageAsync(bool small)

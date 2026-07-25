@@ -73,5 +73,16 @@ namespace YuGiOhSaveEditor.Services
         // app restart rather than being saved to a settings file, since this
         // app doesn't have one yet.
         public int CacheSizeLimitMB { get; set; }
+
+        // Which Themes/*.xaml palette is merged into Application.Resources -
+        // "MasterDuel" (default, App.xaml's original hardcoded choice) or
+        // "DuelLinks". Read once at startup by App.OnStartup, before
+        // MainWindow/Controls.xaml ever get a chance to resolve a
+        // StaticResource brush against it - WPF bakes StaticResource values
+        // in at parse time, so this can't be swapped live while the app is
+        // running the way IsOfflineMode/DiskCacheEnabled can. SettingsView's
+        // Appearance picker sets this and calls AppSettings.Save(), then
+        // prompts for a restart rather than trying to re-theme in place.
+        public string ThemeName { get; set; } = "MasterDuel";
     }
 }

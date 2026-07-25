@@ -20,7 +20,7 @@ Built with C# / WPF on .NET 8. Every screen is declared entirely in XAML — no 
 - *Unlocks* — Shop Packs and Battle Packs checklists (including duelist-specific packs like Blue Angel, Soulburner, Varis, Ai, War of the Giants/Round 2, and Epic Dawn) plus Tutorials, each with per-item toggles and bulk Unlock All / Clear All.
 - *Avatars* — toggle which duelist avatars are unlocked.
 - *Stats* — view and edit the save's tracked lifetime stats (duels played/won, cards traded, decks created, and more).
-- *Cards* — an accurate "X / 10027" owned-card counter (scanning the save's full card table, not just its used prefix), a bulk "set every currently-owned card's count" tool that leaves un-owned cards alone, a one-click Unlock All Cards that owns exactly the 10,027 real cards without touching unused save padding, and a search box to look up and unlock/set the count of one specific card by name.
+- *Cards* — an accurate "X / 10027 card slots have at least 1 copy owned" counter alongside a second "X / 30081 total copies owned" tally (every owned card can hold up to 3 copies, so this one tracks the actual copy count rather than just whether a card is owned at all), both scanning the save's full card table rather than just its used prefix. Also: a bulk "set every currently-owned card's count" tool that leaves un-owned cards alone, a one-click Unlock All Cards that owns exactly the 10,027 real cards without touching unused save padding, and a search box to look up and unlock/set the count of one specific card by name.
 
 **Undo / redo.** Every edit — renames, duelist changes, copy/swap, clears, imports, drag-reorders, and every Save Editor edit — can be undone with `Ctrl+Z` and redone with `Ctrl+Y` (or `Ctrl+Shift+Z`), or via the top-bar buttons. `Ctrl+O` opens a save file and `Ctrl+S` saves it. Undo history resets whenever a save file is (re)loaded.
 
@@ -41,6 +41,12 @@ Built with C# / WPF on .NET 8. Every screen is declared entirely in XAML — no 
 The card database (`Assets/cards/Cards.json`) and duelist portraits (`Assets/characters/*.png`) live directly under the project's own `Assets/` folder and are embedded into the app as build resources — no extra setup needed.
 
 Each card entry also carries a `shop_packs` array — which of the game's own Card Shop booster packs (Grandpa Muto, Yugi, Seto Kaiba, Yusei Fudo, Ai, etc.) sell that card, and at what pack-specific rarity (`Common` or `Rare` — the shop system only has those two tiers, separate from any real-world TCG rarity). A card can appear in more than one pack, so it's a list rather than a single field, e.g. `"shop_packs": [{"pack": "Yugi", "rarity": "Rare"}]`. Sourced from a fan-compiled [Card Shop list](https://gamefaqs.gamespot.com/pc/280088-yu-gi-oh-legacy-of-the-duelist-link-evolution/faqs/79850) covering all 33 packs; 10,025 of 10,027 cards matched cleanly (`Synchro Chase` and `The Unhappy Girl` have no confirmed pack in that source, so their card preview just omits the line). Both the Deck Editor and Card Search preview panels show it as a "Shop: Pack Name (Rarity)" line right under the ban status.
+
+Each card entry also carries a `duelist_challenges` array — which duelist(s)' dedicated Duelist Challenge decklist (the single deck per character explicitly suffixed "- Challenge" in the source guide, as opposed to their regular campaign-episode decks) contains that card; winning or losing that duel awards copies of everything in the opponent's deck. A card can show up in more than one duelist's Challenge deck (staples like Mystical Space Typhoon appear in over 80), so it's a list of duelist names, e.g. `"duelist_challenges": ["Seto Kaiba", "Yugi Muto"]`. Sourced from a fan-compiled [Character Deck List guide](https://gamefaqs.gamespot.com/pc/280088-yu-gi-oh-legacy-of-the-duelist-link-evolution/faqs/79842) covering all 160 duelist appearances across every campaign era; 2,201 of the guide's 2,202 unique card names matched cleanly (`Sword Slash` has no confirmed match — likely a typo in the source for a similarly-named card). Both preview panels show it as a "Duelist Challenge: Name, Name" line right under the Shop line, capped at 5 names with a "+N more" suffix for cards that appear in a lot of decks.
+
+The same two preview panels also show "Owned: X / 3" right under the passcode — how many copies of that specific card the currently loaded save has, read live from the save's card table (not just whether it's shop-obtainable). Blank if no save is loaded yet.
+
+Both preview panels also show the card's Type and Attribute as small icons right next to that Race/Attribute text line — the 26 Monster Type icons from *Yu-Gi-Oh! Master Duel*'s own icon set, and the 7 official TCG/OCG Attribute icons (DARK/LIGHT/EARTH/WATER/FIRE/WIND/DIVINE), both sourced from Yugipedia and bundled under `Assets/icons/`.
 
 ### Offline mode
 
@@ -94,6 +100,7 @@ That license covers the code only. Two things bundled in `Assets/` are not origi
 
 - `Assets/cards/Cards.json` — card names, text, and stats sourced from [YGOPRODeck](https://ygoprodeck.com/)'s API.
 - `Assets/characters/*.png` — duelist portraits extracted from the game itself.
+- `Assets/icons/Attribute-*.png` and `Assets/icons/Type-*-MADU.png` — the official Attribute icons and *Yu-Gi-Oh! Master Duel*'s Type icons, sourced from [Yugipedia](https://yugipedia.com/).
 
 Card data, card images, and all *Yu-Gi-Oh!* trademarks/copyrights belong to **4K Media Inc., a subsidiary of Konami Digital Entertainment, Inc.** This is an unofficial fan-made tool — it is not produced by, endorsed by, or affiliated with Konami, 4K Media, or YGOPRODeck. Don't redistribute those two assets outside of this tool, and if you fork the project for anything beyond personal use, swap in your own card/portrait data or keep the same non-affiliation disclaimer.
 

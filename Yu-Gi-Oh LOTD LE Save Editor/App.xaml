@@ -5,14 +5,15 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <!-- The app's one fixed palette/brush set (no user-editable
-                     Theme Editor) plus the shared control styles built on top
-                     of it. Order matters: MasterDuelTheme defines the brushes
-                     Controls.xaml's styles reference. Traced from Yu-Gi-Oh!
-                     Master Duel's UI (not Duel Links - see MasterDuelTheme.xaml's
-                     own comment for why). DuelLinksTheme.xaml is left in the
-                     project, unreferenced, in case any of that look is wanted
-                     again later. -->
+                <!-- Default palette (Master Duel) plus the shared control
+                     styles built on top of it. Order matters: MasterDuelTheme
+                     defines the brushes Controls.xaml's styles reference.
+                     If Settings' Appearance picker has "Duel Links" saved,
+                     App.OnStartup (via App.ApplyTheme) inserts
+                     Themes/DuelLinksTheme.xaml between these two entries
+                     before this window is ever constructed - see its comment
+                     for why that has to happen in code, before base.OnStartup,
+                     rather than just being declared as a third entry here. -->
                 <ResourceDictionary Source="Themes/MasterDuelTheme.xaml" />
                 <ResourceDictionary Source="Themes/Controls.xaml" />
             </ResourceDictionary.MergedDictionaries>

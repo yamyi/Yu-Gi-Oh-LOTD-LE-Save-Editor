@@ -16,7 +16,7 @@ public sealed class BanIconConverter : IValueConverter
 {
     public object? Convert(object value, Type targetType, object parameter, CultureInfo culture)
     {
-        string? fileName = value as string switch
+        string? fileName = (value as string) switch
         {
             "Forbidden" => "forbidden.png",
             "Limited" => "limited.png",

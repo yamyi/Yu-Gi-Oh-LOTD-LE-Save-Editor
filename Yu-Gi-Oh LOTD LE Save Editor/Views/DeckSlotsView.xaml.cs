@@ -30,8 +30,21 @@ public partial class DeckSlotsView : UserControl
 
     /// <summary>Raised after Import Deck actually mutates AppContext.State.SaveBytes,
     /// so MainWindow can refresh its Save button / dirty state — the WinForms
-    /// build's equivalent was DeckSlotsPage.SlotDataChanged.</summary>
+    /// build's equivalent was DeckSlotsPage.SlotDataChanged. Only ever raised
+    /// by the multi-file import path now - the single-file path raises
+    /// SingleDeckImportRequested instead and never touches SaveBytes itself
+    /// (see ImportDeckButton_Click).</summary>
     public event EventHandler? SaveDataChanged;
+
+    /// <summary>Raised instead of SaveDataChanged when exactly one .ydk was
+    /// selected - MainWindow opens the parsed deck in Deck Editor as a
+    /// pending load (DeckEditorView.LoadPendingDeck) rather than writing it
+    /// to the slot immediately, so nothing here mutates
+    /// AppContext.State.SaveBytes at all; that only happens once the user
+    /// presses Save Deck over there.</summary>
+    public event EventHandler<PendingDeckImport>? SingleDeckImportRequested;
+
+    public sealed record PendingDeckImport(SlotIO.SlotInfo Slot, Deck Deck, string SuggestedName, List<YdkSkippedCard> Skipped);
 
     private SlotIO.SlotInfo? _selectedSlot;
 
@@ -170,10 +183,21 @@ public partial class DeckSlotsView : UserControl
         string[] files = dlg.FileNames;
         if (files.Length == 0) return;
 
+        // A single selected file no longer overwrites the slot immediately -
+        // it opens in Deck Editor as a pending load instead, and nothing
+        // here touches AppContext.State.SaveBytes at all until the user
+        // presses Save Deck there. Multiple files keep the original
+        // immediate-overwrite behavior below unchanged.
+        if (files.Length == 1)
+        {
+            ImportSingleDeckAsPending(owner, slot, files[0]);
+            return;
+        }
+
         // Multiple files fill consecutive slots starting at the one
         // currently selected (#5, #6, #7, ... for three files starting on
         // #5), clipped to however many slots actually exist from here to
-        // #32. A single file keeps the exact original one-slot behavior.
+        // #32.
         int firstSlot = slot.SlotNumber;
         int available = SlotLayout.SlotCount - firstSlot + 1;
         if (files.Length > available)
@@ -190,13 +214,12 @@ public partial class DeckSlotsView : UserControl
             .ToList();
 
         // One upfront overwrite confirmation covering every targeted slot,
-        // instead of interrupting with a Yes/No popup per file.
+        // instead of interrupting with a Yes/No popup per file. (files.Length
+        // is always >= 2 here - the single-file case returned above.)
         var occupied = targetSlots.Where(s => !s.IsEmpty).ToList();
         if (occupied.Count > 0)
         {
-            string message = files.Length == 1
-                ? $"Slot #{occupied[0].SlotNumber} already has a deck ('{occupied[0].Name}'). Overwrite it?"
-                : $"{occupied.Count} of the target slots already have a deck: " +
+            string message = $"{occupied.Count} of the target slots already have a deck: " +
                   $"{string.Join(", ", occupied.Select(s => $"#{s.SlotNumber} ('{s.Name}')"))}. Overwrite them?";
             var confirm = AppMessageBox.Show(owner, message, "Import Deck",
                 MessageBoxButton.YesNo, MessageBoxImage.Question);
@@ -259,44 +282,68 @@ public partial class DeckSlotsView : UserControl
         AppContext.State.Slots = AppContext.SlotIo.ReadAllSlots(AppContext.State.SaveBytes).ToArray();
         SaveDataChanged?.Invoke(this, EventArgs.Empty);
 
-        ShowImportSummary(owner, files.Length, imported, failed, skippedBySlot);
+        ShowMultiImportSummary(owner, files.Length, imported, failed, skippedBySlot);
     }
 
-    /// <summary>Reports the outcome of ImportDeckButton_Click - a single
-    /// file keeps the exact original one-line/skipped-card-list message,
-    /// multiple files get one combined summary instead of a popup per
-    /// file.</summary>
-    private static void ShowImportSummary(Window? owner, int fileCount, List<string> imported,
-        List<string> failed, Dictionary<int, List<YdkSkippedCard>> skippedBySlot)
+    /// <summary>Single-file import path - parses and validates the .ydk the
+    /// same way the multi-file path below does, but never touches
+    /// AppContext.State.SaveBytes itself. Instead it raises
+    /// SingleDeckImportRequested so MainWindow can hand the parsed deck to
+    /// Deck Editor as a pending load (DeckEditorView.LoadPendingDeck) -
+    /// nothing is actually written to slot until the user presses Save Deck
+    /// there, so there's no overwrite confirmation needed here even if the
+    /// slot already has a deck.</summary>
+    private void ImportSingleDeckAsPending(Window? owner, SlotIO.SlotInfo slot, string file)
     {
-        if (fileCount == 1)
+        Deck deck;
+        List<YdkSkippedCard> skipped;
+        try
         {
-            if (failed.Count > 0)
-            {
-                AppMessageBox.Show(owner, $"Couldn't import that deck:\n{failed[0]}", "Import Deck",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-            else if (skippedBySlot.Values.FirstOrDefault() is { Count: > 0 } skipped)
-            {
-                // List every unresolved passcode back to the user - a stale
-                // or foreign-format .ydk (unsupported cards, TCG-only
-                // passcodes, typos) would otherwise just silently drop cards
-                // with no sign anything was wrong beyond a
-                // smaller-than-expected deck.
-                string lines = string.Join("\n", skipped.Select(s => $"  {s.Passcode}  ({s.Section})"));
-                AppMessageBox.Show(owner,
-                    $"Imported {imported[0]}, but {skipped.Count} card(s) weren't found in the card " +
-                    $"database and were skipped:\n\n{lines}",
-                    "Import Deck", MessageBoxButton.OK, MessageBoxImage.Warning, copyText: lines);
-            }
-            else if (imported.Count > 0)
-            {
-                AppMessageBox.Show(owner, $"Imported {imported[0]}.", "Import Deck",
-                    MessageBoxButton.OK, MessageBoxImage.Information);
-            }
+            deck = YDKReader.Parse(file, AppContext.CardDb, out skipped);
+        }
+        catch (Exception ex)
+        {
+            AppMessageBox.Show(owner, $"Couldn't import that deck:\n{ex.Message}", "Import Deck",
+                MessageBoxButton.OK, MessageBoxImage.Error);
             return;
         }
 
+        if (deck.main.Count > 60 || deck.extra.Count > 15 || deck.side.Count > 15)
+        {
+            AppMessageBox.Show(owner,
+                $"Couldn't import that deck: deck too large (Main {deck.main.Count}/60, Extra {deck.extra.Count}/15, " +
+                $"Side {deck.side.Count}/15).",
+                "Import Deck", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        string name = Path.GetFileNameWithoutExtension(file);
+        if (name.Length > 32) name = name[..32];
+
+        SingleDeckImportRequested?.Invoke(this, new PendingDeckImport(slot, deck, name, skipped));
+
+        if (skipped.Count > 0)
+        {
+            // List every unresolved passcode back to the user - a stale or
+            // foreign-format .ydk (unsupported cards, TCG-only passcodes,
+            // typos) would otherwise just silently drop cards with no sign
+            // anything was wrong beyond a smaller-than-expected deck.
+            string lines = string.Join("\n", skipped.Select(s => $"  {s.Passcode}  ({s.Section})"));
+            AppMessageBox.Show(owner,
+                $"Opened '{name}' in Deck Editor, but {skipped.Count} card(s) weren't found in the card " +
+                $"database and were skipped:\n\n{lines}\n\nNothing is saved to slot #{slot.SlotNumber} until you press Save Deck.",
+                "Import Deck", MessageBoxButton.OK, MessageBoxImage.Warning, copyText: lines);
+        }
+    }
+
+    /// <summary>Reports the outcome of ImportDeckButton_Click's multi-file
+    /// path - one combined summary instead of a popup per file. The
+    /// single-file path has its own summary handling now (see
+    /// ImportSingleDeckAsPending), since it no longer writes anything to a
+    /// slot itself.</summary>
+    private static void ShowMultiImportSummary(Window? owner, int fileCount, List<string> imported,
+        List<string> failed, Dictionary<int, List<YdkSkippedCard>> skippedBySlot)
+    {
         var lines2 = new List<string> { $"Imported {imported.Count} of {fileCount} deck(s)." };
 
         if (imported.Count > 0)

@@ -5,14 +5,16 @@ namespace YuGiOhSaveEditor.Services
 {
     /// <summary>
     /// Persists the handful of Settings-page preferences
-    /// (AppState.IsOfflineMode / DiskCacheEnabled / CacheSizeLimitMB) to a
-    /// small JSON file under %LocalAppData%, so they survive an app restart
-    /// instead of silently resetting to their defaults every launch - added
-    /// 2026-07-23 per user report ("the settings (offline mode, cache size,
-    /// etc...) are reset after closing the app"). App.xaml.cs calls Load()
-    /// once at startup, before anything else reads AppState; SettingsView's
-    /// three change handlers (OfflineModeCheckBox_Changed,
-    /// EnableCacheCheckBox_Changed, CacheLimitApplyButton_Click) each call
+    /// (AppState.IsOfflineMode / DiskCacheEnabled / CacheSizeLimitMB /
+    /// ThemeName) to a small JSON file under %LocalAppData%, so they survive
+    /// an app restart instead of silently resetting to their defaults every
+    /// launch - added 2026-07-23 per user report ("the settings (offline
+    /// mode, cache size, etc...) are reset after closing the app").
+    /// App.xaml.cs calls Load() once at startup, before anything else reads
+    /// AppState (ThemeName in particular has to be read before base.OnStartup
+    /// constructs MainWindow - see App.ApplyTheme); SettingsView's change
+    /// handlers (OfflineModeCheckBox_Changed, EnableCacheCheckBox_Changed,
+    /// CacheLimitApplyButton_Click, ThemeCombo_SelectionChanged) each call
     /// Save() right after updating AppState so the file is always in sync
     /// with whatever's showing on screen - there's no separate "apply" step
     /// for persistence itself.
@@ -28,6 +30,7 @@ namespace YuGiOhSaveEditor.Services
             public bool IsOfflineMode { get; set; }
             public bool DiskCacheEnabled { get; set; } = true;
             public int CacheSizeLimitMB { get; set; }
+            public string ThemeName { get; set; } = "MasterDuel";
         }
 
         /// <summary>Reads settings.json into AppContext.State if it exists.
@@ -47,6 +50,7 @@ namespace YuGiOhSaveEditor.Services
                 AppContext.State.IsOfflineMode = data.IsOfflineMode;
                 AppContext.State.DiskCacheEnabled = data.DiskCacheEnabled;
                 AppContext.State.CacheSizeLimitMB = data.CacheSizeLimitMB;
+                if (!string.IsNullOrWhiteSpace(data.ThemeName)) AppContext.State.ThemeName = data.ThemeName;
             }
             catch
             {
@@ -70,6 +74,7 @@ namespace YuGiOhSaveEditor.Services
                     IsOfflineMode = AppContext.State.IsOfflineMode,
                     DiskCacheEnabled = AppContext.State.DiskCacheEnabled,
                     CacheSizeLimitMB = AppContext.State.CacheSizeLimitMB,
+                    ThemeName = AppContext.State.ThemeName,
                 };
                 File.WriteAllText(path, JsonSerializer.Serialize(data));
             }

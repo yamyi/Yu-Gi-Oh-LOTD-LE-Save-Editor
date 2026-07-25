@@ -106,6 +106,8 @@ namespace YuGiOhSaveEditor.Services
             int? id = null,
             int? minLevel = null,
             int? maxLevel = null,
+            int? minRank = null,
+            int? maxRank = null,
             int? minAtk = null,
             int? maxAtk = null,
             int? minDef = null,
@@ -139,11 +141,23 @@ namespace YuGiOhSaveEditor.Services
             if (!string.IsNullOrWhiteSpace(archetype))
                 q = q.Where(c => c.Archetype?.Equals(archetype, StringComparison.OrdinalIgnoreCase) == true);
 
+            // Level only ever means "ordinary monster Level" here - Xyz
+            // monsters store their Rank in the same Level field, and Link
+            // monsters have no Level at all, so both are excluded from a
+            // Level search entirely rather than accidentally matching a
+            // Rank or slipping through on a null comparison. Rank/Link
+            // Rating get their own dedicated range filters below.
             if (minLevel.HasValue)
-                q = q.Where(c => c.Level >= minLevel);
+                q = q.Where(c => !c.IsXyz && !c.IsLink && c.Level >= minLevel);
 
             if (maxLevel.HasValue)
-                q = q.Where(c => c.Level <= maxLevel);
+                q = q.Where(c => !c.IsXyz && !c.IsLink && c.Level <= maxLevel);
+
+            if (minRank.HasValue)
+                q = q.Where(c => c.IsXyz && c.Level >= minRank);
+
+            if (maxRank.HasValue)
+                q = q.Where(c => c.IsXyz && c.Level <= maxRank);
 
             if (minAtk.HasValue)
                 q = q.Where(c => c.Atk >= minAtk);

@@ -3,14 +3,24 @@
                     xmlns:sys="clr-namespace:System;assembly=mscorlib">
 
     <!--
-        The app's one fixed palette - a "Yu-Gi-Oh! Duel Links" mobile-UI look:
-        deep navy backgrounds, bright cyan borders/dividers, a teal gradient for
-        primary CTA buttons, a blue gradient for secondary buttons, gold for
-        callouts/active-tab state, and cyan/magenta/red for Main/Extra/Side
-        deck slots - traced from the same reference screenshots as the WinForms
-        build's Theme.cs (deck editor, deck list, Duel Studio menu, main hub,
-        Settings modal, Help/Etc. list). There is no theme-switching in this
-        app anymore - this file IS the theme.
+        The optional alternate palette - a "Yu-Gi-Oh! Duel Links" mobile-UI
+        look: deep navy backgrounds, bright cyan borders/dividers, a teal
+        gradient for primary CTA buttons, a blue gradient for secondary
+        buttons, gold for callouts/active-tab state, and cyan/magenta/red for
+        Main/Extra/Side deck slots - traced from the same reference
+        screenshots as the WinForms build's Theme.cs (deck editor, deck list,
+        Duel Studio menu, main hub, Settings modal, Help/Etc. list).
+
+        Selectable from Settings (Appearance) - App.ApplyTheme merges this
+        ON TOP OF Themes/MasterDuelTheme.xaml rather than in place of it, so
+        it's never loaded alone. That matters because this file predates the
+        Master Duel redesign and was never updated with the brushes added
+        since (AccentBrush, the rarity/status brushes, the diagonal-line
+        pattern, the translucent/scrim gradients, plain BorderBrush, ...) -
+        anything only defined over there quietly falls back to Master Duel's
+        value instead of failing to resolve. Restarting the app is required
+        to actually apply a theme change - see App.OnStartup's comment for
+        why a live in-place swap isn't possible with StaticResource.
     -->
 
     <!-- ── Backgrounds ─────────────────────────────────────────────────────── -->

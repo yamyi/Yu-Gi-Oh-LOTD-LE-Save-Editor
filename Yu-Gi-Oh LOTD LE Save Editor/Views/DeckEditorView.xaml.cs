@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows;
@@ -8,6 +9,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using Microsoft.Win32;
 using YuGiOhSaveEditor.Controls;
 using YuGiOhSaveEditor.Services;
 
@@ -63,6 +65,32 @@ public partial class DeckEditorView : UserControl, INotifyPropertyChanged
     private bool _comboOptionsLoaded;
     private bool _suppressFilterEvents;
 
+    // ── Unsaved-changes tracking ────────────────────────────────────────────
+    // Nothing on this page ever touches AppContext.State.SaveBytes except
+    // SaveDeckButton_Click - every add/remove/drag-drop/rename/import edits
+    // Main/Extra/Side (and DeckNameBox) in memory only, same as it always
+    // has. What's new is tracking whether there's anything like that sitting
+    // unsaved: MainWindow's SideNav gate (see SideNav_SelectionChanged) reads
+    // HasUnsavedChanges before letting the user switch away from this page,
+    // so an imported-but-not-yet-saved .ydk (or just an in-progress edit to
+    // an already-open slot) can't silently vanish. _loadingDeck suppresses
+    // the dirty flag while LoadDeck/LoadPendingDeck themselves Clear()/Add()
+    // the three collections - those aren't "changes", they're establishing
+    // the new baseline, which each method then sets explicitly right after.
+    private bool _isDirty;
+    private bool _loadingDeck;
+
+    /// <summary>True once a deck has been loaded (an existing slot, or a
+    /// pending single-file .ydk import) and something has changed since,
+    /// without an intervening Save Deck.</summary>
+    public bool HasUnsavedChanges => _isDirty;
+
+    private void SetUnsavedChanges(bool value)
+    {
+        if (_loadingDeck) return;
+        _isDirty = value;
+    }
+
     // ── Zoom ─────────────────────────────────────────────────────────────────
     private const double MinZoom = 0.75;
     private const double MaxZoom = 2.0;
@@ -95,7 +123,11 @@ public partial class DeckEditorView : UserControl, INotifyPropertyChanged
         SideDeckCards.CollectionChanged += DeckCards_CollectionChanged;
     }
 
-    private void DeckCards_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) => RefreshStats();
+    private void DeckCards_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        RefreshStats();
+        SetUnsavedChanges(true);
+    }
 
     private void RefreshStats()
     {
@@ -120,6 +152,7 @@ public partial class DeckEditorView : UserControl, INotifyPropertyChanged
     /// CardDatabase), called from MainWindow's EditCardsRequested handler.</summary>
     public void LoadDeck(SlotIO.SlotInfo slot, CardDatabase cardDb)
     {
+        _loadingDeck = true;
         _currentSlot = slot;
         DeckNameBox.Text = string.IsNullOrWhiteSpace(slot.Name) ? $"Deck {slot.SlotNumber}" : slot.Name;
         MainDeckCards.Clear();
@@ -141,6 +174,43 @@ public partial class DeckEditorView : UserControl, INotifyPropertyChanged
             PopulateFilterCombos();
             RefreshSearchResults();
         }
+
+        _loadingDeck = false;
+        SetUnsavedChanges(false); // fresh from the save file - nothing pending yet
+    }
+
+    /// <summary>Opens a parsed .ydk Deck as a pending, unsaved load - used by
+    /// the single-file path of DeckSlotsView's Import Deck (see
+    /// MainWindow's DeckSlotsPage.SingleDeckImportRequested handler) and by
+    /// this page's own IMPORT .YDK button. Unlike LoadDeck, nothing here
+    /// reads from AppContext.State.SaveBytes - the three sections are
+    /// populated straight from the already-parsed Deck, and nothing is
+    /// written back to the save file until Save Deck is pressed (which,
+    /// once slot is set here, works exactly the same as it would for an
+    /// existing slot's deck).</summary>
+    public void LoadPendingDeck(SlotIO.SlotInfo slot, Deck deck, string suggestedName)
+    {
+        _loadingDeck = true;
+        _currentSlot = slot;
+        DeckNameBox.Text = suggestedName;
+        MainDeckCards.Clear();
+        ExtraDeckCards.Clear();
+        SideDeckCards.Clear();
+        ClearPreview();
+
+        PopulateSection(deck.main, MainDeckCards);
+        PopulateSection(deck.extra, ExtraDeckCards);
+        PopulateSection(deck.side, SideDeckCards);
+
+        if (!_cardListLoaded)
+        {
+            _cardListLoaded = true;
+            PopulateFilterCombos();
+            RefreshSearchResults();
+        }
+
+        _loadingDeck = false;
+        SetUnsavedChanges(true); // not written to the save file yet
     }
 
     /// <summary>Same combo-population approach CardSearchView uses -
@@ -158,11 +228,13 @@ public partial class DeckEditorView : UserControl, INotifyPropertyChanged
         RaceCombo.ItemsSource = new[] { "All Races" }.Concat(AppContext.CardDb.DistinctRaces()).ToList();
         ArchetypeCombo.ItemsSource = new[] { "All Archetypes" }.Concat(AppContext.CardDb.DistinctArchetypes()).ToList();
         BanStatusCombo.ItemsSource = new[] { "All Ban Statuses", "Forbidden", "Limited", "Semi-Limited", "Unlimited" };
+        SortCombo.ItemsSource = CardSorting.Options;
         TypeCombo.SelectedIndex = 0;
         AttributeCombo.SelectedIndex = 0;
         RaceCombo.SelectedIndex = 0;
         ArchetypeCombo.SelectedIndex = 0;
         BanStatusCombo.SelectedIndex = 0;
+        SortCombo.SelectedIndex = 0;
 
         _suppressFilterEvents = false;
         _comboOptionsLoaded = true;
@@ -202,6 +274,20 @@ public partial class DeckEditorView : UserControl, INotifyPropertyChanged
         }
     }
 
+    /// <summary>Same as the ushort[]/lotd-id overload above, but for a
+    /// sequence of already-resolved Cards - what a parsed .ydk Deck actually
+    /// contains (see YDKReader.Parse), so LoadPendingDeck/ImportYdkButton_Click
+    /// don't need a round trip through lotd ids just to reuse this loop.</summary>
+    private static void PopulateSection(IEnumerable<Card> cards, ObservableCollection<CardTileViewModel> target)
+    {
+        foreach (var card in cards)
+        {
+            var vm = new CardTileViewModel(card);
+            target.Add(vm);
+            _ = vm.LoadImageAsync(small: true);
+        }
+    }
+
     // ── Card List / search ──────────────────────────────────────────────────
 
     // Two overloads, same name - SelectionChanged (the four ComboBoxes) and
@@ -210,6 +296,17 @@ public partial class DeckEditorView : UserControl, INotifyPropertyChanged
     private void Filter_Changed(object sender, SelectionChangedEventArgs e) => RefreshSearchResults();
     private void Filter_Changed(object sender, RoutedEventArgs e) => RefreshSearchResults();
     private void Filter_TextChanged(object sender, TextChangedEventArgs e) => RefreshSearchResults();
+
+    /// <summary>Same idea as CardSearchView's own SortCombo_SelectionChanged -
+    /// resets SortDirectionToggle to whichever direction makes sense for the
+    /// newly-selected key (CardSorting.DefaultAscending) before refreshing.</summary>
+    private void SortCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        SortDirectionToggle.IsChecked = CardSorting.DefaultAscending(SortCombo.SelectedItem as string);
+        RefreshSearchResults();
+    }
+
+    private void SortDirectionToggle_Click(object sender, RoutedEventArgs e) => RefreshSearchResults();
 
     private void ClearFilters_Click(object sender, RoutedEventArgs e)
     {
@@ -222,11 +319,17 @@ public partial class DeckEditorView : UserControl, INotifyPropertyChanged
         BanStatusCombo.SelectedIndex = 0;
         MinLevelBox.Text = string.Empty;
         MaxLevelBox.Text = string.Empty;
+        MinRankBox.Text = string.Empty;
+        MaxRankBox.Text = string.Empty;
+        MinLinkBox.Text = string.Empty;
+        MaxLinkBox.Text = string.Empty;
         MinAtkBox.Text = string.Empty;
         MaxAtkBox.Text = string.Empty;
         MinDefBox.Text = string.Empty;
         MaxDefBox.Text = string.Empty;
         SearchDescCheckBox.IsChecked = true;
+        SortCombo.SelectedIndex = 0;
+        FavoritesOnlyCheckBox.IsChecked = false;
         _suppressFilterEvents = false;
 
         RefreshSearchResults();
@@ -234,9 +337,9 @@ public partial class DeckEditorView : UserControl, INotifyPropertyChanged
 
     /// <summary>Same CardDatabase.Filter call CardSearchView's RefreshResults
     /// makes, off this panel's own Type/Attribute/Race/Archetype combos and
-    /// Level/ATK/DEF range boxes - the two views' card-search panels stay
-    /// behaviorally identical, just reflowed for this column's narrower
-    /// width (see the XAML).</summary>
+    /// Level/Rank/Link Rating/ATK/DEF range boxes - the two views' card-search
+    /// panels stay behaviorally identical, just reflowed for this column's
+    /// narrower width (see the XAML).</summary>
     private void RefreshSearchResults()
     {
         if (_suppressFilterEvents || !_comboOptionsLoaded) return;
@@ -249,10 +352,17 @@ public partial class DeckEditorView : UserControl, INotifyPropertyChanged
             race: ComboFilterValue(RaceCombo),
             archetype: ComboFilterValue(ArchetypeCombo),
             minLevel: ParseInt(MinLevelBox.Text), maxLevel: ParseInt(MaxLevelBox.Text),
+            minRank: ParseInt(MinRankBox.Text), maxRank: ParseInt(MaxRankBox.Text),
+            minLinkVal: ParseInt(MinLinkBox.Text), maxLinkVal: ParseInt(MaxLinkBox.Text),
             minAtk: ParseInt(MinAtkBox.Text), maxAtk: ParseInt(MaxAtkBox.Text),
             minDef: ParseInt(MinDefBox.Text), maxDef: ParseInt(MaxDefBox.Text),
             banStatus: ComboFilterValue(BanStatusCombo),
             searchDescription: SearchDescCheckBox.IsChecked == true);
+
+        if (FavoritesOnlyCheckBox.IsChecked == true)
+            results = results.Where(c => FavoritesStore.IsFavorite(c.Id));
+
+        results = results.Sort(SortCombo.SelectedItem as string, SortDirectionToggle.IsChecked == true);
 
         var list = results.Take(200).ToList();
 
@@ -397,8 +507,17 @@ public partial class DeckEditorView : UserControl, INotifyPropertyChanged
         _previewCard = card;
         PreviewPlaceholder.Visibility = Visibility.Collapsed;
         PreviewName.Text = card.Name;
+        PreviewFavoriteToggle.IsChecked = FavoritesStore.IsFavorite(card.Id);
         PreviewPasscode.Text = CardPreviewFormatter.Passcode(card);
-        PreviewTypeRace.Text = CardPreviewFormatter.TypeRace(card);
+        SetOptionalLine(PreviewOwned, CardPreviewFormatter.OwnedCount(card));
+        SetOptionalLine(PreviewRaceText, CardPreviewFormatter.RaceText(card));
+        PreviewAttributeText.Text = CardPreviewFormatter.AttributeOrSubTypeText(card);
+        PreviewTypeIcon.Source = card.IsMonster
+            ? AttributeTypeIconProvider.TypeIcon(card.Race)
+            : AttributeTypeIconProvider.CardTypeIcon(card.Type);
+        PreviewAttributeIcon.Source = card.IsMonster
+            ? AttributeTypeIconProvider.AttributeIcon(card.Attribute)
+            : AttributeTypeIconProvider.SubTypeIcon(card.HumanReadableCardType);
         SetOptionalLine(PreviewMonsterType, CardPreviewFormatter.MonsterType(card));
         SetOptionalLine(PreviewArchetype, CardPreviewFormatter.Archetype(card));
 
@@ -418,6 +537,8 @@ public partial class DeckEditorView : UserControl, INotifyPropertyChanged
         SetOptionalLine(PreviewLinkMarkers, CardPreviewFormatter.LinkMarkers(card));
         SetOptionalLine(PreviewBanStatus, CardPreviewFormatter.BanStatus(card));
         SetOptionalLine(PreviewShop, CardPreviewFormatter.ShopInfo(card));
+        SetOptionalLine(PreviewDuelistChallenge, CardPreviewFormatter.DuelistChallengeInfo(card));
+        PreviewContent.Visibility = Visibility.Visible;
 
         PreviewDesc.Text = card.Desc;
         AddToDeckButton.IsEnabled = true;
@@ -437,21 +558,48 @@ public partial class DeckEditorView : UserControl, INotifyPropertyChanged
 
     /// <summary>Shared helper for the preview panel's optional fields
     /// (Archetype, Pendulum Scale, Link Markers, ban status, monster
-    /// subtype) - collapses the TextBlock entirely when there's nothing to
-    /// show instead of leaving a blank line in the StackPanel.</summary>
-    private static void SetOptionalLine(TextBlock block, string text)
+    /// subtype) - collapses the field entirely when there's nothing to
+    /// show instead of leaving a blank line in the StackPanel. Takes a
+    /// TextBox, not TextBlock - every preview field is a chrome-less
+    /// read-only TextBox now (see SelectableTextStyle) so its text can be
+    /// selected/copied like any other text in the app.</summary>
+    private static void SetOptionalLine(TextBox block, string text)
     {
         block.Text = text;
         block.Visibility = string.IsNullOrEmpty(text) ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    /// <summary>Same idea as CardSearchView's own PreviewFavoriteToggle_Click -
+    /// writes straight to FavoritesStore (the preview isn't backed by a
+    /// CardTileViewModel), then syncs any matching tile(s) so a star
+    /// doesn't sit stale until the next search refresh. Checks all four
+    /// card collections, not just CardListResults, since the same card
+    /// could already be sitting in Main/Extra/Side too.</summary>
+    private void PreviewFavoriteToggle_Click(object sender, RoutedEventArgs e)
+    {
+        if (_previewCard == null) return;
+
+        bool value = PreviewFavoriteToggle.IsChecked == true;
+        FavoritesStore.SetFavorite(_previewCard.Id, value);
+
+        foreach (var vm in CardListResults.Concat(MainDeckCards).Concat(ExtraDeckCards).Concat(SideDeckCards)
+                     .Where(t => t.Card.Id == _previewCard.Id))
+            vm.IsFavorite = value;
     }
 
     private void ClearPreview()
     {
         _previewCard = null;
         PreviewPlaceholder.Visibility = Visibility.Visible;
+        PreviewContent.Visibility = Visibility.Collapsed;
         PreviewName.Text = string.Empty;
+        PreviewFavoriteToggle.IsChecked = false;
         PreviewPasscode.Text = string.Empty;
-        PreviewTypeRace.Text = string.Empty;
+        SetOptionalLine(PreviewOwned, string.Empty);
+        SetOptionalLine(PreviewRaceText, string.Empty);
+        PreviewAttributeText.Text = string.Empty;
+        PreviewTypeIcon.Source = null;
+        PreviewAttributeIcon.Source = null;
         PreviewStatsPanel.Visibility = Visibility.Collapsed;
         SetOptionalLine(PreviewMonsterType, string.Empty);
         SetOptionalLine(PreviewArchetype, string.Empty);
@@ -459,6 +607,7 @@ public partial class DeckEditorView : UserControl, INotifyPropertyChanged
         SetOptionalLine(PreviewLinkMarkers, string.Empty);
         SetOptionalLine(PreviewBanStatus, string.Empty);
         SetOptionalLine(PreviewShop, string.Empty);
+        SetOptionalLine(PreviewDuelistChallenge, string.Empty);
         PreviewDesc.Text = string.Empty;
         PreviewImage.Source = null;
         AddToDeckButton.IsEnabled = false;
@@ -776,8 +925,120 @@ public partial class DeckEditorView : UserControl, INotifyPropertyChanged
         _currentSlot = AppContext.SlotIo.ReadSlot(AppContext.State.SaveBytes, _currentSlot.SlotNumber);
         AppContext.State.Slots = AppContext.SlotIo.ReadAllSlots(AppContext.State.SaveBytes).ToArray();
         SaveDataChanged?.Invoke(this, EventArgs.Empty);
+        SetUnsavedChanges(false); // now matches what's actually on the save file
 
         AppMessageBox.Show(owner, $"Saved deck to slot #{_currentSlot.SlotNumber}.", "Save Deck",
+            MessageBoxButton.OK, MessageBoxImage.Information);
+    }
+
+    // ── Standalone .ydk import/export (this open deck only) ────────────────
+    // Separate from DeckSlotsView's own Import/Export, which work off a
+    // selected slot in the slot grid rather than whatever's actively open
+    // here. Export just serializes the in-memory Main/Extra/Side straight
+    // out, even if it's never been saved to the slot yet. Import replaces
+    // them the same way LoadPendingDeck does for a slot-list import - a
+    // pending, unsaved change until Save Deck is pressed - except the
+    // target is whichever slot is already open, not a fresh one, so a
+    // non-empty deck already being edited gets an explicit "replace it?"
+    // confirmation first (LoadPendingDeck's other caller doesn't need this,
+    // since it always lands on a page that had nothing loaded yet).
+
+    private void ImportYdkButton_Click(object sender, RoutedEventArgs e)
+    {
+        var owner = Window.GetWindow(this);
+        if (_currentSlot == null) return;
+
+        if (MainDeckCards.Count > 0 || ExtraDeckCards.Count > 0 || SideDeckCards.Count > 0)
+        {
+            var confirm = AppMessageBox.Show(owner,
+                "Importing a .ydk file will replace the Main, Extra, and Side Deck currently shown here. Continue?",
+                "Import .ydk", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            if (confirm != MessageBoxResult.Yes) return;
+        }
+
+        var dlg = new OpenFileDialog
+        {
+            Title = "Import .ydk",
+            Filter = "YDK files (*.ydk)|*.ydk|All files (*.*)|*.*",
+            CheckFileExists = true,
+        };
+        if (dlg.ShowDialog(owner) != true) return;
+
+        Deck deck;
+        List<YdkSkippedCard> skipped;
+        try
+        {
+            deck = YDKReader.Parse(dlg.FileName, AppContext.CardDb, out skipped);
+        }
+        catch (Exception ex)
+        {
+            AppMessageBox.Show(owner, $"Couldn't import that deck:\n{ex.Message}", "Import .ydk",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        if (deck.main.Count > 60 || deck.extra.Count > 15 || deck.side.Count > 15)
+        {
+            AppMessageBox.Show(owner,
+                $"Couldn't import that deck: deck too large (Main {deck.main.Count}/60, Extra {deck.extra.Count}/15, Side {deck.side.Count}/15).",
+                "Import .ydk", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        string name = Path.GetFileNameWithoutExtension(dlg.FileName);
+        if (name.Length > 32) name = name[..32];
+
+        LoadPendingDeck(_currentSlot, deck, name);
+
+        if (skipped.Count > 0)
+        {
+            string lines = string.Join("\n", skipped.Select(s => $"  {s.Passcode}  ({s.Section})"));
+            AppMessageBox.Show(owner,
+                $"Imported '{name}', but {skipped.Count} card(s) weren't found in the card database and were " +
+                $"skipped:\n\n{lines}\n\nNothing is saved to slot #{_currentSlot.SlotNumber} until you press Save Deck.",
+                "Import .ydk", MessageBoxButton.OK, MessageBoxImage.Warning, copyText: lines);
+        }
+    }
+
+    private void ExportYdkButton_Click(object sender, RoutedEventArgs e)
+    {
+        var owner = Window.GetWindow(this);
+
+        if (MainDeckCards.Count == 0 && ExtraDeckCards.Count == 0 && SideDeckCards.Count == 0)
+        {
+            AppMessageBox.Show(owner, "There's nothing in this deck yet - nothing to export.", "Export .ydk",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var deck = new Deck(
+            MainDeckCards.Select(vm => vm.Card).ToList(),
+            ExtraDeckCards.Select(vm => vm.Card).ToList(),
+            SideDeckCards.Select(vm => vm.Card).ToList());
+
+        string suggested = DeckNameBox.Text?.Trim();
+        if (string.IsNullOrEmpty(suggested)) suggested = "deck";
+
+        var dlg = new SaveFileDialog
+        {
+            Title = "Export .ydk",
+            Filter = "YDK files (*.ydk)|*.ydk",
+            FileName = suggested + ".ydk",
+        };
+        if (dlg.ShowDialog(owner) != true) return;
+
+        try
+        {
+            YDKWriter.Write(dlg.FileName, deck);
+        }
+        catch (Exception ex)
+        {
+            AppMessageBox.Show(owner, $"Couldn't write that .ydk file:\n{ex.Message}", "Export .ydk",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        AppMessageBox.Show(owner, $"Exported to {Path.GetFileName(dlg.FileName)}.", "Export .ydk",
             MessageBoxButton.OK, MessageBoxImage.Information);
     }
 }

@@ -93,6 +93,16 @@ namespace YuGiOhSaveEditor.Services
         [JsonPropertyName("shop_packs")]
         public List<ShopPackEntry>? ShopPacks { get; init; }
 
+        // ── Duelist Challenge (LOTD:LE-specific, not part of ygoprodeck's own data) ─
+        // Which duelists' dedicated "- Challenge" decklist (as opposed to their
+        // regular campaign-episode decks) contains this card - winning or losing
+        // that duel awards copies of it. A card can appear in more than one
+        // duelist's Challenge deck, hence a list. Added 2026-07-24 from a
+        // fan-compiled Character Deck List guide; null/empty means the card
+        // wasn't found in any "- Challenge" decklist in that source.
+        [JsonPropertyName("duelist_challenges")]
+        public List<string>? DuelistChallenges { get; init; }
+
         // ── Convenience helpers ───────────────────────────────────────────────────
         [JsonIgnore]
         public bool IsMonster => Type.Contains("Monster", StringComparison.OrdinalIgnoreCase);
@@ -108,6 +118,13 @@ namespace YuGiOhSaveEditor.Services
 
         [JsonIgnore]
         public bool IsPendulum => Scale.HasValue;
+
+        /// <summary>Xyz monsters store their Rank in the same "level" field
+        /// ygoprodeck uses for every other monster type's Level - FrameType
+        /// ("xyz" / "xyz_pendulum") is what actually distinguishes it, so the
+        /// preview can label that number "Rank" instead of "LV".</summary>
+        [JsonIgnore]
+        public bool IsXyz => FrameType.Contains("xyz", StringComparison.OrdinalIgnoreCase);
 
         [JsonIgnore]
         public string? SmallImageUrl => CardImages?.FirstOrDefault()?.ImageUrlSmall;

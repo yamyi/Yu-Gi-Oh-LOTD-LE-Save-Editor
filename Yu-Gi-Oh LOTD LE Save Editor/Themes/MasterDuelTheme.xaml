@@ -3,14 +3,16 @@
                     xmlns:sys="clr-namespace:System;assembly=mscorlib">
 
     <!--
-        The app's one fixed palette - now traced from Yu-Gi-Oh! Master Duel's
-        UI instead of Duel Links (see the DUEL/DECK/SOLO/SHOP main menu and
-        deck-editor screenshots): near-black backgrounds cut by diagonal grey
-        geometric lines, a vivid lime-green accent for active/selected state
-        and primary actions, bold white uppercase text, and the N/R/SR/UR
-        card-rarity pip colors (grey/blue/gold/purple) from the card list
-        panel. Superseded from the old DuelLinksTheme.xaml, kept around
-        unused in case any of it is still wanted later.
+        The default palette - traced from Yu-Gi-Oh! Master Duel's UI (see the
+        DUEL/DECK/SOLO/SHOP main menu and deck-editor screenshots): near-black
+        backgrounds cut by diagonal grey geometric lines, a vivid lime-green
+        accent for active/selected state and primary actions, bold white
+        uppercase text, and the N/R/SR/UR card-rarity pip colors
+        (grey/blue/gold/purple) from the card list panel. Always the first
+        dictionary App.xaml merges - Settings' Appearance picker
+        (App.ApplyTheme) layers Themes/DuelLinksTheme.xaml on top of this one
+        rather than replacing it, so this also doubles as the fallback for
+        any brush the older Duel Links palette never defined.
     -->
 
     <!-- ── Backgrounds ─────────────────────────────────────────────────────── -->

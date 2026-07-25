@@ -758,10 +758,22 @@ public partial class SaveEditorView : UserControl
         int total = CardCollectionLayout.GetNumCards(Version);
         int slots = CardCollectionLayout.GetNumCardSlots(Version);
         int owned = 0;
+        int copies = 0;
         for (int i = 0; i < slots; i++)
-            if (CardCollectionLayout.GetCount(Bytes!, Version, i) > 0) owned++;
+        {
+            int count = CardCollectionLayout.GetCount(Bytes!, Version, i);
+            if (count > 0) owned++;
+            copies += count;
+        }
 
-        CardsSummaryText.Text = $"{owned:N0} / {total:N0} card slots have at least 1 copy owned.";
+        // Second figure alongside the slot count: total individual copies
+        // owned (a card counts up to 3 toward this), out of the maximum
+        // possible if every one of the `total` real cards were owned at the
+        // 3-copy cap - added 2026-07-24 per user request for a "copies"
+        // tally distinct from the existing "at least 1 copy" slot tally.
+        int maxCopies = total * CardCollectionLayout.MaxCountPerCard;
+        CardsSummaryText.Text =
+            $"{owned:N0} / {total:N0} card slots have at least 1 copy owned   •   {copies:N0} / {maxCopies:N0} total copies owned";
         RefreshCardSearchResults(reselectCardLotdId);
     }
 
