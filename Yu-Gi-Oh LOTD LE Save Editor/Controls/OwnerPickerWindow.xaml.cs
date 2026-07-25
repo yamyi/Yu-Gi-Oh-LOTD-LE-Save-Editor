@@ -29,7 +29,20 @@ public partial class OwnerPickerWindow : Window
     {
         InitializeComponent();
 
+        // Only offer avatars the player has actually unlocked in this save -
+        // ids >= NumAvatarSlots aren't real avatars at all (see
+        // LotdSaveFormat.NumAvatarSlots's doc comment: chardata.bin only
+        // defines ids 0-152), and of those, MiscSaveLayout.GetAvatarUnlocked
+        // reads the same UnlockedAvatars bitfield the Avatars tab itself
+        // manages. Falls back to the unfiltered list if there's somehow no
+        // save loaded (shouldn't happen - this dialog only opens from an
+        // already-loaded deck slot) so the picker never ends up empty.
+        var save = AppContext.State.SaveBytes;
+        var version = AppContext.State.Version;
+
         _allOwners = OwnerDatabase.All
+            .Where(kv => save == null
+                || (kv.Key < LotdSaveFormat.NumAvatarSlots && MiscSaveLayout.GetAvatarUnlocked(save, version, kv.Key)))
             .Select(kv => new OwnerListItem(kv.Key, kv.Value))
             .OrderBy(o => o.Name)
             .ToList();

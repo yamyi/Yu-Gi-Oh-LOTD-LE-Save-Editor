@@ -9,6 +9,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Threading;
 using Microsoft.Win32;
 using YuGiOhSaveEditor.Controls;
 using YuGiOhSaveEditor.Services;
@@ -65,6 +66,14 @@ public partial class DeckEditorView : UserControl, INotifyPropertyChanged
     private bool _comboOptionsLoaded;
     private bool _suppressFilterEvents;
 
+    // Same debounce as CardSearchView's own _searchDebounceTimer - every
+    // SearchBox keystroke used to call RefreshSearchResults() immediately,
+    // re-running CardDatabase.Filter and firing off a fire-and-forget
+    // LoadImageAsync for up to 200 tiles per keystroke, with earlier
+    // keystrokes' image loads still in flight. Coalesces those into one
+    // RefreshSearchResults() call ~250ms after typing pauses.
+    private readonly DispatcherTimer _searchDebounceTimer;
+
     // ── Unsaved-changes tracking ────────────────────────────────────────────
     // Nothing on this page ever touches AppContext.State.SaveBytes except
     // SaveDeckButton_Click - every add/remove/drag-drop/rename/import edits
@@ -111,6 +120,13 @@ public partial class DeckEditorView : UserControl, INotifyPropertyChanged
     {
         InitializeComponent();
         CardListBox.ItemsSource = CardListResults;
+
+        _searchDebounceTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
+        _searchDebounceTimer.Tick += (_, _) =>
+        {
+            _searchDebounceTimer.Stop();
+            RefreshSearchResults();
+        };
 
         // Recompute the stats panel off any deck mutation, whatever the
         // source - click-to-add, drag-drop, Clear Deck, or LoadDeck's own
@@ -295,7 +311,12 @@ public partial class DeckEditorView : UserControl, INotifyPropertyChanged
     // the same pattern CardSearchView's Filter_Changed pair uses.
     private void Filter_Changed(object sender, SelectionChangedEventArgs e) => RefreshSearchResults();
     private void Filter_Changed(object sender, RoutedEventArgs e) => RefreshSearchResults();
-    private void Filter_TextChanged(object sender, TextChangedEventArgs e) => RefreshSearchResults();
+    private void Filter_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        // Debounced - see _searchDebounceTimer's doc comment.
+        _searchDebounceTimer.Stop();
+        _searchDebounceTimer.Start();
+    }
 
     /// <summary>Same idea as CardSearchView's own SortCombo_SelectionChanged -
     /// resets SortDirectionToggle to whichever direction makes sense for the
@@ -332,6 +353,10 @@ public partial class DeckEditorView : UserControl, INotifyPropertyChanged
         FavoritesOnlyCheckBox.IsChecked = false;
         _suppressFilterEvents = false;
 
+        // See CardSearchView.ClearFilters_Click's matching comment - avoids
+        // a redundant refresh firing ~250ms later from SearchBox.Text's own
+        // TextChanged event above.
+        _searchDebounceTimer.Stop();
         RefreshSearchResults();
     }
 

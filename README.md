@@ -4,6 +4,16 @@ A Windows desktop app for viewing and editing save files from *Yu-Gi-Oh! Legacy 
 
 Built with C# / WPF on .NET 8. Every screen is declared entirely in XAML — no controls are ever created at runtime in code.
 
+## Screenshots
+
+| Deck Slots | Deck Editor |
+|---|---|
+| ![Deck Slots](screenshots/deck-slots.png) | ![Deck Editor](screenshots/deck-editor.png) |
+
+| Card Search | Save Editor — Campaign |
+|---|---|
+| ![Card Search](screenshots/card-search.png) | ![Save Editor Campaign tab](screenshots/save-editor-campaign.png) |
+
 ## Features
 
 **32-slot deck browser (Deck Slots).** See every deck slot in the save at once, each showing the duelist portrait, deck name, Main/Extra/Side card counts, and a small legality dot. Search by deck name or by any card inside the deck. Select a slot to Rename it, Copy To or Swap With another slot, Change Duelist, Clear the slot entirely, or Import/Export its `.ydk`. Export All Decks dumps every non-empty slot to its own `.ydk` file in a chosen folder in one go.
@@ -91,6 +101,16 @@ Card lookups elsewhere go through `Models/YDK/CardDatabase.cs`, which maps betwe
 - No installer — run from source or a self-built binary.
 - Deck legality checks the LotD banlist only; there's no separate TCG/OCG/region setting.
 - Compiling requires a Windows machine with the .NET 8 SDK and the WPF (`Microsoft.NET.Sdk` + `UseWPF`) workload — there's no cross-platform build target.
+
+## Credits
+
+This project stands on a lot of other people's work:
+
+- **[pixeltris/Lotd](https://github.com/pixeltris/Lotd)** — the original reverse-engineering of the save format itself. Every offset, enum, and bit layout in `Models/Save/*` (`LotdSaveFormat`, `SlotLayout`, `MiscSaveLayout`, `CampaignSaveLayout`, `CardCollectionLayout`, `StatsLayout`) traces back to their work, ported here and re-verified against real save files along the way. This editor wouldn't exist without it.
+- **[YGOPRODeck](https://ygoprodeck.com/)** — card names, text, and stats behind `Assets/cards/Cards.json`, plus the API and per-card pages the "View on ygoprodeck" links point to.
+- **[Yugipedia](https://yugipedia.com/)** — source for the official Attribute icons and *Yu-Gi-Oh! Master Duel*'s Type icons bundled under `Assets/icons/`.
+- A fan-compiled **[Card Shop list](https://gamefaqs.gamespot.com/pc/280088-yu-gi-oh-legacy-of-the-duelist-link-evolution/faqs/79850)** and **[Character Deck List guide](https://gamefaqs.gamespot.com/pc/280088-yu-gi-oh-legacy-of-the-duelist-link-evolution/faqs/79842)** on GameFAQs — the source for each card's `shop_packs` and `duelist_challenges` data.
+- **Konami / 4K Media** — for *Yu-Gi-Oh! Legacy of the Duelist: Link Evolution* itself, the game this whole project is built around.
 
 ## Licensing
 

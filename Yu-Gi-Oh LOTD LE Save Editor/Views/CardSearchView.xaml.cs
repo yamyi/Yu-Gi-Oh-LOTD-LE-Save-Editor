@@ -3,6 +3,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Threading;
 using YuGiOhSaveEditor.Controls;
 using YuGiOhSaveEditor.Services;
 
@@ -28,6 +29,19 @@ public partial class CardSearchView : UserControl
 
     private const int ResultCap = 300;
 
+    // Every keystroke in SearchBox used to call RefreshResults() directly,
+    // which re-runs CardDatabase.Filter over the whole card list AND kicks
+    // off a fire-and-forget LoadImageAsync for up to ResultCap tiles - typing
+    // a whole word fast fired that entire burst once per character, with
+    // every earlier burst's image loads still in flight and competing for
+    // I/O/CPU with the newest one. This timer coalesces those into a single
+    // RefreshResults() call ~250ms after the user stops typing, same fix as
+    // any standard "search-as-you-type" debounce. Only SearchBox's
+    // TextChanged goes through it - the combo/checkbox filters below still
+    // call RefreshResults() directly since those only fire once per action,
+    // not once per keystroke.
+    private readonly DispatcherTimer _searchDebounceTimer;
+
     // ── Zoom ─────────────────────────────────────────────────────────────────
     private const double MinZoom = 0.75;
     private const double MaxZoom = 2.0;
@@ -38,6 +52,13 @@ public partial class CardSearchView : UserControl
     {
         InitializeComponent();
         ResultsList.ItemsSource = ResultCards;
+
+        _searchDebounceTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
+        _searchDebounceTimer.Tick += (_, _) =>
+        {
+            _searchDebounceTimer.Stop();
+            RefreshResults();
+        };
 
         // CardDatabase.Load() only ever runs once a save file is opened
         // (MainWindow.OnOpenSave), so this page has to (re)populate itself
@@ -87,7 +108,12 @@ public partial class CardSearchView : UserControl
 
     // ── Filters ──────────────────────────────────────────────────────────────
 
-    private void Filter_TextChanged(object sender, TextChangedEventArgs e) => RefreshResults();
+    private void Filter_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        // Debounced - see _searchDebounceTimer's doc comment.
+        _searchDebounceTimer.Stop();
+        _searchDebounceTimer.Start();
+    }
 
     // Two overloads, same name: SelectionChanged (the four ComboBoxes) and
     // Checked/Unchecked (the CheckBox) are different delegate types
@@ -136,6 +162,11 @@ public partial class CardSearchView : UserControl
         FavoritesOnlyCheckBox.IsChecked = false;
         _suppressFilterEvents = false;
 
+        // Clearing SearchBox.Text above still raises TextChanged, which
+        // would otherwise leave a pending debounced refresh to fire ~250ms
+        // from now on top of the explicit one below - harmless (same
+        // now-empty query either way) but redundant.
+        _searchDebounceTimer.Stop();
         RefreshResults();
     }
 
