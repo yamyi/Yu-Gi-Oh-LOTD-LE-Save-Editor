@@ -25,6 +25,8 @@ public partial class SaveEditorView : UserControl
 
     private bool _suppressEvents;
     private int _selectedSeriesIndex;
+    private int _selectedChallengeSeriesIndex;
+    private int _selectedAvatarSeriesIndex;
     private string _currentTabKey = "DuelPoints";
 
     private byte[]? Bytes => AppContext.State?.SaveBytes;
@@ -33,6 +35,8 @@ public partial class SaveEditorView : UserControl
 
     private Dictionary<string, (Button Button, Grid Section)> _tabs = new();
     private Dictionary<LotdDuelSeries, Button> _seriesButtons = new();
+    private Dictionary<LotdDuelSeries, Button> _challengeSeriesButtons = new();
+    private Dictionary<LotdDuelSeries, Button> _avatarSeriesButtons = new();
 
     public ObservableCollection<DuelRowViewModel> DuelRows { get; } = new();
     public ObservableCollection<CheckableItem> ShopPackItems { get; } = new();
@@ -40,6 +44,7 @@ public partial class SaveEditorView : UserControl
     public ObservableCollection<CheckableItem> AvatarItems { get; } = new();
     public ObservableCollection<StatRowViewModel> StatItems { get; } = new();
     public ObservableCollection<CardSearchResultViewModel> CardSearchResults { get; } = new();
+    public ObservableCollection<ChallengeRowViewModel> ChallengeItems { get; } = new();
 
     private const int CardSearchResultCap = 40;
     private int? _selectedCardLotdId;
@@ -51,6 +56,13 @@ public partial class SaveEditorView : UserControl
     /// ComboBoxes - a plain static option list, same convention as every
     /// other cross-element binding in this app.</summary>
     public string[] DuelStateNames => DuelStateOptions;
+
+    private static readonly string[] ChallengeStateOptions =
+        { "Locked", "Available", "Failed", "Complete" };
+
+    /// <summary>Bound via ElementName=Root from ChallengeRowTemplate's
+    /// ComboBox - DeulistChallengeState's 4 named values in on-disk order.</summary>
+    public string[] ChallengeStateNames => ChallengeStateOptions;
 
     public SaveEditorView()
     {
@@ -64,6 +76,7 @@ public partial class SaveEditorView : UserControl
             ["Avatars"] = (TabAvatarsButton, AvatarsSection),
             ["Stats"] = (TabStatsButton, StatsSection),
             ["Cards"] = (TabCardsButton, CardsSection),
+            ["Challenges"] = (TabChallengesButton, ChallengesSection),
         };
 
         _seriesButtons = new Dictionary<LotdDuelSeries, Button>
@@ -76,12 +89,33 @@ public partial class SaveEditorView : UserControl
             [LotdDuelSeries.YuGiOhVRAINS] = SeriesVRAINSButton,
         };
 
+        _challengeSeriesButtons = new Dictionary<LotdDuelSeries, Button>
+        {
+            [LotdDuelSeries.YuGiOh] = ChallengeSeriesYuGiOhButton,
+            [LotdDuelSeries.YuGiOhGX] = ChallengeSeriesGXButton,
+            [LotdDuelSeries.YuGiOh5D] = ChallengeSeries5DButton,
+            [LotdDuelSeries.YuGiOhZEXAL] = ChallengeSeriesZEXALButton,
+            [LotdDuelSeries.YuGiOhARCV] = ChallengeSeriesARCVButton,
+            [LotdDuelSeries.YuGiOhVRAINS] = ChallengeSeriesVRAINSButton,
+        };
+
+        _avatarSeriesButtons = new Dictionary<LotdDuelSeries, Button>
+        {
+            [LotdDuelSeries.YuGiOh] = AvatarSeriesYuGiOhButton,
+            [LotdDuelSeries.YuGiOhGX] = AvatarSeriesGXButton,
+            [LotdDuelSeries.YuGiOh5D] = AvatarSeries5DButton,
+            [LotdDuelSeries.YuGiOhZEXAL] = AvatarSeriesZEXALButton,
+            [LotdDuelSeries.YuGiOhARCV] = AvatarSeriesARCVButton,
+            [LotdDuelSeries.YuGiOhVRAINS] = AvatarSeriesVRAINSButton,
+        };
+
         DuelRowsList.ItemsSource = DuelRows;
         ShopPacksList.ItemsSource = ShopPackItems;
         TutorialsList.ItemsSource = TutorialItems;
         AvatarsList.ItemsSource = AvatarItems;
         StatsList.ItemsSource = StatItems;
         CardSearchResultsList.ItemsSource = CardSearchResults;
+        ChallengesList.ItemsSource = ChallengeItems;
 
         RefreshFromState();
     }
@@ -98,6 +132,7 @@ public partial class SaveEditorView : UserControl
         RefreshAvatarsTab();
         RefreshStatsTab();
         RefreshCardsTab();
+        RefreshChallengesTab();
         ApplyTabVisuals();
     }
 
@@ -163,21 +198,9 @@ public partial class SaveEditorView : UserControl
     // Campaign
     // ══════════════════════════════════════════════════════════════════════
 
-    /// <summary>Confirmed-real duel ranges, per series, within the fixed
-    /// 50-slot save array - 0-based index of the first real duel, and how
-    /// many real duels follow it. Everything outside that range is unused
-    /// padding and gets hidden from the list entirely. Series not listed
-    /// here fall back to showing the full unfiltered 50. Ported verbatim
-    /// from the WinForms build's SaveEditorPage.KnownRealDuelRange.</summary>
-    private static readonly Dictionary<LotdDuelSeries, (int RealStart, int RealCount)> KnownRealDuelRange = new()
-    {
-        { LotdDuelSeries.YuGiOh, (1, 32) },
-        { LotdDuelSeries.YuGiOhGX, (1, 32) },
-        { LotdDuelSeries.YuGiOh5D, (1, 32) },
-        { LotdDuelSeries.YuGiOhZEXAL, (1, 26) },
-        { LotdDuelSeries.YuGiOhARCV, (1, 33) },
-        { LotdDuelSeries.YuGiOhVRAINS, (1, 28) },
-    };
+    // Real duel ranges per series now live on CampaignSaveLayout.KnownRealDuelRange
+    // (also consumed by StatsLayout.RecalculateCampaignStats) so the UI filter and
+    // the stat recalculation can never disagree about which slots are real duels.
 
     private void RefreshCampaignTab()
     {
@@ -252,7 +275,7 @@ public partial class SaveEditorView : UserControl
 
             int realStart = 0;
             int realCount = CampaignSaveLayout.DuelsPerSeries;
-            if (currentSeries.HasValue && KnownRealDuelRange.TryGetValue(currentSeries.Value, out var range))
+            if (currentSeries.HasValue && CampaignSaveLayout.KnownRealDuelRange.TryGetValue(currentSeries.Value, out var range))
             {
                 realStart = range.RealStart;
                 realCount = range.RealCount;
@@ -304,7 +327,39 @@ public partial class SaveEditorView : UserControl
             CampaignSaveLayout.SetState(Bytes!, Version, _selectedSeriesIndex, row.DuelIndex, state);
         else
             CampaignSaveLayout.SetReverseState(Bytes!, Version, _selectedSeriesIndex, row.DuelIndex, state);
+
+        // A duel (forward or reverse) reading anything but Locked implies
+        // every duel before it must already be at least that progressed -
+        // see CampaignSaveLayout.EnsurePrerequisitesComplete's doc comment.
+        if (state != LotdCampaignDuelState.Locked)
+            CampaignSaveLayout.EnsurePrerequisitesComplete(Bytes!, Version, _selectedSeriesIndex, row.DuelIndex);
+
+        // Keep the lifetime Stats chunk from drifting away from whatever the
+        // duel grid now says - see StatsLayout.RecalculateCampaignStats' doc
+        // comment for why this used to be the cause of saves getting stuck on
+        // the post-duel results screen.
+        StatsLayout.RecalculateCampaignStats(Bytes!, Version);
+        // A story stage flipping to/from Complete auto-(un)locks its
+        // milestone duelist's shop/battle pack - see
+        // MiscSaveLayout.SyncShopPacksFromCampaignState's doc comment.
+        MiscSaveLayout.SyncShopPacksFromCampaignState(Bytes!, Version);
+        // A character's Campaign duel (forward + reverse) going all-Complete
+        // auto-unlocks their Challenge, which can in turn unlock the
+        // Duelist Challenges gate - see MiscSaveLayout.SyncChallengesFromCampaignState
+        // and SyncChallengeGateFromChallenges' doc comments.
+        MiscSaveLayout.SyncChallengesFromCampaignState(Bytes!, Version);
+        MiscSaveLayout.SyncChallengeGateFromChallenges(Bytes!, Version);
+        // Same rule, applied to avatars instead of challenges - see
+        // MiscSaveLayout.SyncAvatarsFromCampaignState's doc comment.
+        MiscSaveLayout.SyncAvatarsFromCampaignState(Bytes!, Version);
+        RefreshStatsTab();
+        RefreshUnlocksTab();
+        RefreshChallengesTab();
+        RefreshAvatarsTab();
         RaiseSaveDataChanged();
+        // Refresh the duel grid too - EnsurePrerequisitesComplete above may
+        // have just completed earlier duel cards that are still on screen.
+        RebuildDuelGrid();
     }
 
     private void UnlockSeries_Click(object sender, RoutedEventArgs e) => BulkSetSeries(LotdCampaignDuelState.Available);
@@ -319,6 +374,15 @@ public partial class SaveEditorView : UserControl
         // separately, so a bulk action that only touched forward would leave
         // every Reverse cell exactly where it was.
         CampaignSaveLayout.SetSeries(Bytes!, Version, _selectedSeriesIndex, state, state);
+        StatsLayout.RecalculateCampaignStats(Bytes!, Version);
+        MiscSaveLayout.SyncShopPacksFromCampaignState(Bytes!, Version);
+        MiscSaveLayout.SyncChallengesFromCampaignState(Bytes!, Version);
+        MiscSaveLayout.SyncChallengeGateFromChallenges(Bytes!, Version);
+        MiscSaveLayout.SyncAvatarsFromCampaignState(Bytes!, Version);
+        RefreshStatsTab();
+        RefreshUnlocksTab();
+        RefreshChallengesTab();
+        RefreshAvatarsTab();
         RaiseSaveDataChanged();
         RebuildDuelGrid();
     }
@@ -332,6 +396,15 @@ public partial class SaveEditorView : UserControl
         if (!HasSave) return;
         AppContext.Undo.Snapshot();
         CampaignSaveLayout.SetAllSeries(Bytes!, Version, state, state);
+        StatsLayout.RecalculateCampaignStats(Bytes!, Version);
+        MiscSaveLayout.SyncShopPacksFromCampaignState(Bytes!, Version);
+        MiscSaveLayout.SyncChallengesFromCampaignState(Bytes!, Version);
+        MiscSaveLayout.SyncChallengeGateFromChallenges(Bytes!, Version);
+        MiscSaveLayout.SyncAvatarsFromCampaignState(Bytes!, Version);
+        RefreshStatsTab();
+        RefreshUnlocksTab();
+        RefreshChallengesTab();
+        RefreshAvatarsTab();
         RaiseSaveDataChanged();
         RebuildDuelGrid();
     }
@@ -589,12 +662,30 @@ public partial class SaveEditorView : UserControl
     /// and Avatars - CheckableItem.Kind says which underlying flag store to
     /// write to (ShopPacks/Tutorials/UnlockedAvatars directly, or
     /// BattlePacksFlag by way of BattlePackShopEntries for the 4 shop
-    /// duelists whose real flag lives there instead).</summary>
+    /// duelists whose real flag lives there instead).
+    ///
+    /// Failsafe (2026-07-25): checking a box ON is refused (reverted, no
+    /// write, no undo snapshot) unless CanManuallyUnlockCheckableItem says
+    /// its real Campaign prerequisite is already satisfied - "if a duelist
+    /// does not have all his duels completed, you can not unlock the avatar
+    /// ... and if the duel that unlocks a pack shop is not complete then it
+    /// can not be unlocked either." Unchecking (locking) is never refused.</summary>
     private void CheckableItem_Changed(object sender, RoutedEventArgs e)
     {
         if (_suppressEvents || !HasSave) return;
         if ((sender as FrameworkElement)?.DataContext is not CheckableItem item) return;
-        bool on = (sender as CheckBox)?.IsChecked == true;
+        if (sender is not CheckBox checkBox) return;
+        bool on = checkBox.IsChecked == true;
+
+        if (on && !CanManuallyUnlockCheckableItem(item, out string blockedReason))
+        {
+            _suppressEvents = true;
+            checkBox.IsChecked = false;
+            _suppressEvents = false;
+            AppMessageBox.Show(Window.GetWindow(this), blockedReason, "Not Unlockable Yet",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
 
         AppContext.Undo.Snapshot();
         switch (item.Kind)
@@ -636,6 +727,48 @@ public partial class SaveEditorView : UserControl
         RaiseSaveDataChanged();
     }
 
+    /// <summary>Failsafe gate for CheckableItem_Changed's unlock direction -
+    /// see that method's doc comment. Only ShopPack/Avatar/the 4
+    /// BattlePackShopEntries kinds are gated (everything with a real
+    /// Campaign prerequisite); Tutorial and anything else fall through to
+    /// "always allowed" since this app has no campaign-driven rule for
+    /// them.</summary>
+    private bool CanManuallyUnlockCheckableItem(CheckableItem item, out string blockedReason)
+    {
+        blockedReason = string.Empty;
+
+        switch (item.Kind)
+        {
+            case "ShopPack":
+            {
+                var entry = ShopPackLabels[item.Index];
+                if (MiscSaveLayout.CanManuallyUnlockShopPack(Bytes!, Version, MiscSaveLayout.PackFlagKind.Shop, entry.Flag))
+                    return true;
+                blockedReason = $"{entry.Label}'s shop pack unlocks after completing their Campaign story stage - complete it first.";
+                return false;
+            }
+            case "Avatar":
+            {
+                if (MiscSaveLayout.CanManuallyUnlock(Bytes!, Version, (byte)item.Index))
+                    return true;
+                blockedReason = $"{item.Label}'s avatar unlocks after completing all of their Campaign duels (forward and reverse) - complete them first.";
+                return false;
+            }
+            default:
+            {
+                foreach (var entry in BattlePackShopEntries)
+                {
+                    if (entry.Kind != item.Kind) continue;
+                    if (MiscSaveLayout.CanManuallyUnlockShopPack(Bytes!, Version, MiscSaveLayout.PackFlagKind.Battle, (uint)entry.Flag))
+                        return true;
+                    blockedReason = $"{entry.Label}'s shop pack unlocks after completing their Campaign story stage - complete it first.";
+                    return false;
+                }
+                return true; // Tutorial, or any other kind this failsafe doesn't cover
+            }
+        }
+    }
+
     private void UnlockChallenges_Click(object sender, RoutedEventArgs e) => BulkChallenges(DeulistChallengeState.Available);
     private void CompleteChallenges_Click(object sender, RoutedEventArgs e) => BulkChallenges(DeulistChallengeState.Complete);
     private void ResetChallenges_Click(object sender, RoutedEventArgs e) => BulkChallenges(DeulistChallengeState.Locked);
@@ -645,6 +778,17 @@ public partial class SaveEditorView : UserControl
         if (!HasSave) return;
         AppContext.Undo.Snapshot();
         MiscSaveLayout.SetAllChallenges(Bytes!, Version, state);
+        // Same reasoning as the Campaign bulk buttons: keep Games_Challenge/
+        // Wins_Challenge (and Wins_Nonmatch, derived from it) from drifting
+        // away from whatever the challenge slots actually say now.
+        StatsLayout.RecalculateChallengeStats(Bytes!, Version);
+        // See MiscSaveLayout.SyncChallengeGateFromChallenges' doc comment -
+        // UNLOCK/COMPLETE can newly satisfy "at least 1 unlocked"; RESET
+        // deliberately does NOT re-lock the gate (one-directional).
+        MiscSaveLayout.SyncChallengeGateFromChallenges(Bytes!, Version);
+        RefreshStatsTab();
+        RefreshUnlocksTab();
+        RefreshChallengesTab();
         RaiseSaveDataChanged();
     }
 
@@ -665,14 +809,74 @@ public partial class SaveEditorView : UserControl
 
     private void RefreshAvatarsTab()
     {
+        if (HasSave)
+        {
+            var series = CampaignSaveLayout.GetSeries(Version);
+            if (_selectedAvatarSeriesIndex >= series.Length) _selectedAvatarSeriesIndex = 0;
+        }
+
+        ApplyAvatarSeriesButtonVisuals();
+        RebuildAvatarGrid();
+    }
+
+    /// <summary>Same Style-swap/visibility pattern as Campaign's
+    /// ApplySeriesButtonVisuals and Challenges' ApplyChallengeSeriesButtonVisuals,
+    /// against this tab's own button dictionary/selection.</summary>
+    private void ApplyAvatarSeriesButtonVisuals()
+    {
+        var active = (Style)FindResource("SeriesLogoActiveStyle");
+        var inactive = (Style)FindResource("SeriesLogoInactiveStyle");
+        var series = HasSave ? CampaignSaveLayout.GetSeries(Version) : Array.Empty<LotdDuelSeries>();
+        LotdDuelSeries? currentSeries = _selectedAvatarSeriesIndex >= 0 && _selectedAvatarSeriesIndex < series.Length
+            ? series[_selectedAvatarSeriesIndex]
+            : null;
+
+        foreach (var (seriesValue, button) in _avatarSeriesButtons)
+        {
+            button.Visibility = Array.IndexOf(series, seriesValue) >= 0 ? Visibility.Visible : Visibility.Collapsed;
+            button.Style = seriesValue == currentSeries ? active : inactive;
+        }
+    }
+
+    private void AvatarSeriesLogoButton_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as Button)?.Tag is not string tag || !Enum.TryParse<LotdDuelSeries>(tag, out var series)) return;
+
+        var allSeries = CampaignSaveLayout.GetSeries(Version);
+        int idx = Array.IndexOf(allSeries, series);
+        if (idx < 0) return;
+
+        _selectedAvatarSeriesIndex = idx;
+        ApplyAvatarSeriesButtonVisuals();
+        RebuildAvatarGrid();
+    }
+
+    /// <summary>Populates AvatarItems for just the currently-selected series
+    /// (DuelistChallengeSlots.GetSeries applied to the avatar id, which
+    /// shares the same CharacterId space - see RefreshAvatarsTab's previous
+    /// flat-list version, which already indexed OwnerDatabase the same way),
+    /// same filter-to-one-series-at-a-time layout as Campaign/Challenges.
+    /// Avatar ids only go up to LotdSaveFormat.NumAvatarSlots-1 (152), so
+    /// later ZEXAL/VRAINS characters simply never appear in any series'
+    /// list here - same limitation SyncAvatarsFromCampaignState documents.</summary>
+    private void RebuildAvatarGrid()
+    {
         _suppressEvents = true;
         try
         {
             AvatarItems.Clear();
             if (!HasSave) return;
 
+            var allSeries = CampaignSaveLayout.GetSeries(Version);
+            LotdDuelSeries? currentSeries = _selectedAvatarSeriesIndex >= 0 && _selectedAvatarSeriesIndex < allSeries.Length
+                ? allSeries[_selectedAvatarSeriesIndex]
+                : null;
+            if (currentSeries is null) return;
+
             for (int i = 0; i < LotdSaveFormat.NumAvatarSlots; i++)
             {
+                if (DuelistChallengeSlots.GetSeries((byte)i) != currentSeries.Value) continue;
+
                 string name = OwnerDatabase.GetName((byte)i);
                 bool unlocked = MiscSaveLayout.GetAvatarUnlocked(Bytes!, Version, i);
                 AvatarItems.Add(new CheckableItem(name, i, "Avatar", unlocked));
@@ -730,8 +934,188 @@ public partial class SaveEditorView : UserControl
 
         AppContext.Undo.Snapshot();
         StatsLayout.Set(Bytes!, Version, row.Index, value);
+
+        // Editing Wins_Nonmatch directly auto-(un)locks the Battle Pack
+        // milestones gated on it - see
+        // StatsLayout.SyncBattlePackUnlocksFromNonmatchWins' doc comment.
+        // (Editing it indirectly, via Campaign/Challenge state changes that
+        // call RecalculateCampaignStats/RecalculateChallengeStats, already
+        // triggers the same sync from inside RecalculateNonmatchWins.)
+        if (row.Index == (int)StatType.Wins_Nonmatch)
+        {
+            StatsLayout.SyncBattlePackUnlocksFromNonmatchWins(Bytes!, Version);
+            RefreshUnlocksTab();
+        }
+
         RaiseSaveDataChanged();
         box.Text = value.ToString();
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // Challenges (individual duelists - see DuelistChallengeSlots.cs for the
+    // CharacterId -> Challenges-array slot mapping this tab is built from)
+    // ══════════════════════════════════════════════════════════════════════
+
+    private void RefreshChallengesTab()
+    {
+        if (HasSave)
+        {
+            var series = CampaignSaveLayout.GetSeries(Version);
+            if (_selectedChallengeSeriesIndex >= series.Length) _selectedChallengeSeriesIndex = 0;
+        }
+
+        ApplyChallengeSeriesButtonVisuals();
+        RebuildChallengeGrid();
+    }
+
+    /// <summary>Same Style-swap/visibility pattern as Campaign's
+    /// ApplySeriesButtonVisuals, just against this tab's own button
+    /// dictionary/selection so the two series pickers don't interfere with
+    /// each other.</summary>
+    private void ApplyChallengeSeriesButtonVisuals()
+    {
+        var active = (Style)FindResource("SeriesLogoActiveStyle");
+        var inactive = (Style)FindResource("SeriesLogoInactiveStyle");
+        var series = HasSave ? CampaignSaveLayout.GetSeries(Version) : Array.Empty<LotdDuelSeries>();
+        LotdDuelSeries? currentSeries = _selectedChallengeSeriesIndex >= 0 && _selectedChallengeSeriesIndex < series.Length
+            ? series[_selectedChallengeSeriesIndex]
+            : null;
+
+        foreach (var (seriesValue, button) in _challengeSeriesButtons)
+        {
+            button.Visibility = Array.IndexOf(series, seriesValue) >= 0 ? Visibility.Visible : Visibility.Collapsed;
+            button.Style = seriesValue == currentSeries ? active : inactive;
+        }
+    }
+
+    private void ChallengeSeriesLogoButton_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as Button)?.Tag is not string tag || !Enum.TryParse<LotdDuelSeries>(tag, out var series)) return;
+
+        var allSeries = CampaignSaveLayout.GetSeries(Version);
+        int idx = Array.IndexOf(allSeries, series);
+        if (idx < 0) return;
+
+        _selectedChallengeSeriesIndex = idx;
+        ApplyChallengeSeriesButtonVisuals();
+        RebuildChallengeGrid();
+    }
+
+    /// <summary>Populates ChallengeItems for just the currently-selected
+    /// series (DuelistChallengeSlots.GetSeries), same
+    /// filter-to-one-series-at-a-time layout as Campaign's RebuildDuelGrid.</summary>
+    private void RebuildChallengeGrid()
+    {
+        _suppressEvents = true;
+        try
+        {
+            ChallengeItems.Clear();
+            if (!HasSave) return;
+
+            var allSeries = CampaignSaveLayout.GetSeries(Version);
+            LotdDuelSeries? currentSeries = _selectedChallengeSeriesIndex >= 0 && _selectedChallengeSeriesIndex < allSeries.Length
+                ? allSeries[_selectedChallengeSeriesIndex]
+                : null;
+            if (currentSeries is null) return;
+
+            // Slots at/beyond this save version's real Challenges-array size
+            // don't exist on disk for this format (e.g. every VRAINS-era entry
+            // for the older 2016 "Lotd" format, which has no VRAINS content at
+            // all) - writing to one would land on unrelated bytes (UnlockedRecipes,
+            // shop/battle pack flags, ...) instead of silently no-oping, so they're
+            // filtered out here rather than left for MiscSaveLayout's bounds check
+            // to catch.
+            int numSlots = LotdSaveFormat.GetNumDeckDataSlots(Version);
+            var visible = DuelistChallengeSlots.Entries
+                .Where(entry => entry.SlotIndex < numSlots && DuelistChallengeSlots.GetSeries(entry.CharacterId) == currentSeries.Value)
+                .ToArray();
+
+            // A handful of duelists have two distinct challenges sharing one
+            // display name (see DuelistChallengeSlots' doc comment) - tag only
+            // those with "(#CharacterId)" so the list stays uncluttered for
+            // everyone else. Every real name collision happens to land in
+            // the same series (The Gore, Varis - both VRAINS), so comparing
+            // within just this series' visible set is enough; the other
+            // collisions (Alexis Rhodes, Crow Hogan, Jack Atlas, Kite Tenjo,
+            // Aster Phoenix) each span two different series and so never
+            // collide within a single series' list to begin with.
+            var nameCounts = visible
+                .GroupBy(entry => OwnerDatabase.GetName(entry.CharacterId))
+                .ToDictionary(g => g.Key, g => g.Count());
+
+            foreach (var entry in visible)
+            {
+                string name = OwnerDatabase.GetName(entry.CharacterId);
+                string label = nameCounts[name] > 1 ? $"{name} (#{entry.CharacterId})" : name;
+                var state = MiscSaveLayout.GetChallengeState(Bytes!, Version, entry.SlotIndex);
+                ChallengeItems.Add(new ChallengeRowViewModel(label, entry.CharacterId, entry.SlotIndex, DisplayChallengeState(state)));
+            }
+        }
+        finally
+        {
+            _suppressEvents = false;
+        }
+    }
+
+    /// <summary>Maps a raw challenge-state value to one of the 4 named
+    /// states - same defensive clamp as Campaign's DisplayState, for any
+    /// never-touched slot holding a raw value outside the enum.</summary>
+    private static string DisplayChallengeState(DeulistChallengeState state)
+    {
+        int raw = (int)state;
+        if (raw < 0) return DeulistChallengeState.Locked.ToString();
+        if (raw > (int)DeulistChallengeState.Complete) return DeulistChallengeState.Complete.ToString();
+        return state.ToString();
+    }
+
+    /// <summary>Commits one Challenges row's ComboBox back to the save on
+    /// selection change - same auto-commit-without-a-button convention as
+    /// every other checklist/dropdown in this view. Recalculates
+    /// Games_Challenge/Wins_Challenge (and transitively Wins_Nonmatch, and
+    /// transitively the Battle Pack milestones gated on that - see
+    /// StatsLayout.SyncBattlePackUnlocksFromNonmatchWins) exactly like the
+    /// existing bulk Unlock/Complete/Reset Challenges buttons already do, so
+    /// unlocking a single named challenge here can never leave those derived
+    /// values out of step with what this tab now shows.
+    ///
+    /// Failsafe (2026-07-25): the specific Locked -> anything-else transition
+    /// is refused (reverted, no write, no undo snapshot) unless
+    /// MiscSaveLayout.CanManuallyUnlock says this duelist's Campaign duels
+    /// are all Complete - "if a duelist does not have all his duels
+    /// completed, you can not unlock ... the challenge for it." Moving
+    /// between two already-unlocked states (e.g. Available -> Complete) or
+    /// back to Locked is never refused - only the initial unlock is gated.</summary>
+    private void ChallengeState_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_suppressEvents || !HasSave) return;
+        if (sender is not ComboBox combo || combo.DataContext is not ChallengeRowViewModel row) return;
+        if (combo.SelectedItem is not string text || !Enum.TryParse<DeulistChallengeState>(text, out var state)) return;
+
+        var current = MiscSaveLayout.GetChallengeState(Bytes!, Version, row.SlotIndex);
+        if (state == current) return;
+
+        bool isUnlocking = current == DeulistChallengeState.Locked && state != DeulistChallengeState.Locked;
+        if (isUnlocking && !MiscSaveLayout.CanManuallyUnlock(Bytes!, Version, row.CharacterId))
+        {
+            _suppressEvents = true;
+            combo.SelectedItem = DisplayChallengeState(current);
+            _suppressEvents = false;
+            AppMessageBox.Show(Window.GetWindow(this),
+                $"{row.Label}'s challenge unlocks after completing all of their Campaign duels (forward and reverse) - complete them first.",
+                "Not Unlockable Yet", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        AppContext.Undo.Snapshot();
+        MiscSaveLayout.SetChallengeState(Bytes!, Version, row.SlotIndex, state);
+        StatsLayout.RecalculateChallengeStats(Bytes!, Version);
+        // Unlocking (or completing) this one challenge may be the save's
+        // first non-Locked challenge - see
+        // MiscSaveLayout.SyncChallengeGateFromChallenges' doc comment.
+        MiscSaveLayout.SyncChallengeGateFromChallenges(Bytes!, Version);
+        RefreshStatsTab();
+        RefreshUnlocksTab();
+        RaiseSaveDataChanged();
     }
 
     // ══════════════════════════════════════════════════════════════════════

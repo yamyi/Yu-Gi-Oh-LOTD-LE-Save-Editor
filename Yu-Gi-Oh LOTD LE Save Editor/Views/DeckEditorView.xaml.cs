@@ -944,8 +944,15 @@ public partial class DeckEditorView : UserControl, INotifyPropertyChanged
         if (string.IsNullOrEmpty(name)) name = $"Deck {_currentSlot.SlotNumber}";
         if (name.Length > 32) name = name[..32];
 
+        // Capture before the write below overwrites it - see DeckSlotsView's
+        // ImportDeckButton_Click for why this only counts a previously-empty
+        // slot, not every re-save of an already-populated one.
+        bool wasEmpty = _currentSlot.IsEmpty;
+
         AppContext.Undo.Snapshot();
         AppContext.SlotIo.WriteSlot(AppContext.State.SaveBytes, _currentSlot.SlotNumber, deck, name, _currentSlot.OwnerId);
+        if (wasEmpty)
+            StatsLayout.Increment(AppContext.State.SaveBytes, AppContext.State.Version, StatType.Decks_Created);
 
         _currentSlot = AppContext.SlotIo.ReadSlot(AppContext.State.SaveBytes, _currentSlot.SlotNumber);
         AppContext.State.Slots = AppContext.SlotIo.ReadAllSlots(AppContext.State.SaveBytes).ToArray();

@@ -23,6 +23,16 @@ public sealed class DuelRowViewModel
     public string Forward { get; }
     public string Reverse { get; }
 
+    /// <summary>False only for the series' first real duel (DisplayNumber 1) -
+    /// its Reverse state is always Locked in the real game (Reverse mode as
+    /// a whole only unlocks after clearing the entire series forward, not
+    /// after any single early duel), so DuelRowTemplate hides its Reverse
+    /// ComboBox entirely rather than show a dropdown that can't actually do
+    /// anything meaningful. See also
+    /// CampaignSaveLayout.EnsurePrerequisitesComplete, which skips this same
+    /// duel for the same reason.</summary>
+    public bool ShowReverse { get; }
+
     public DuelRowViewModel(int displayNumber, int duelIndex, string title, string matchup, byte ownerA, byte ownerB, string forward, string reverse)
     {
         DisplayNumber = displayNumber;
@@ -33,5 +43,6 @@ public sealed class DuelRowViewModel
         OwnerB = ownerB;
         Forward = forward;
         Reverse = reverse;
+        ShowReverse = displayNumber != 1;
     }
 }

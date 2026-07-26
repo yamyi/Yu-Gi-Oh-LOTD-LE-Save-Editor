@@ -265,6 +265,12 @@ public partial class DeckSlotsView : UserControl
             // logic. A slot that already has a real owner keeps it.
             byte ownerId = (targetSlot.IsEmpty || targetSlot.OwnerId == 0) ? (byte)138 : targetSlot.OwnerId;
 
+            // Capture emptiness before the write below overwrites it - Decks_Created
+            // tracks decks actually being created, so overwriting an existing deck
+            // (re-importing over slot #5, say) shouldn't bump it, only a slot that
+            // had nothing in it before this import.
+            bool wasEmpty = targetSlot.IsEmpty;
+
             try
             {
                 AppContext.SlotIo.WriteSlot(AppContext.State.SaveBytes, targetSlot.SlotNumber, deck, name, ownerId);
@@ -274,6 +280,9 @@ public partial class DeckSlotsView : UserControl
                 failed.Add($"#{targetSlot.SlotNumber} ({Path.GetFileName(file)}): {ex.Message}");
                 continue;
             }
+
+            if (wasEmpty)
+                StatsLayout.Increment(AppContext.State.SaveBytes, AppContext.State.Version, StatType.Decks_Created);
 
             imported.Add($"#{targetSlot.SlotNumber} '{name}'");
             if (skipped.Count > 0) skippedBySlot[targetSlot.SlotNumber] = skipped;
@@ -578,7 +587,7 @@ public partial class DeckSlotsView : UserControl
             try
             {
                 var deck = AppContext.SlotIo.ReadDeck(AppContext.State.SaveBytes, slot, AppContext.CardDb);
-                string path = Path.Combine(dlg.FolderName, $"{slot.SlotNumber:D2} - {SanitizeFileName(slot.Name)}.ydk");
+                string path = Path.Combine(dlg.FolderName, $"{SanitizeFileName(slot.Name)}.ydk");
                 YDKWriter.Write(path, deck);
                 exported++;
             }

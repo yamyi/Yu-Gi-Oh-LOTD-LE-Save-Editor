@@ -71,9 +71,13 @@ public partial class MainWindow : Window
 
         // Import Deck / Save Deck both mutate AppContext.State.SaveBytes
         // directly - refresh the Save button's dirty state the same way any
-        // other mutation does.
-        DeckSlotsPage.SaveDataChanged += (_, _) => SetDirty(IsActuallyDirty());
-        DeckEditorPage.SaveDataChanged += (_, _) => SetDirty(IsActuallyDirty());
+        // other mutation does. They also both now bump StatsLayout's
+        // Decks_Created counter on a first-time (previously empty) slot
+        // write, so SaveEditorPage's Stats tab needs a refresh too, or it'll
+        // keep showing a stale value until something else (e.g. undo/redo)
+        // happens to refresh it first.
+        DeckSlotsPage.SaveDataChanged += (_, _) => { SetDirty(IsActuallyDirty()); SaveEditorPage.RefreshFromState(); };
+        DeckEditorPage.SaveDataChanged += (_, _) => { SetDirty(IsActuallyDirty()); SaveEditorPage.RefreshFromState(); };
         SaveEditorPage.SaveDataChanged += (_, _) => SetDirty(IsActuallyDirty());
 
         AppContext.Undo.StackChanged += RefreshUndoRedoButtons;

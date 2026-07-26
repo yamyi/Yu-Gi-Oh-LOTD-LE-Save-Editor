@@ -24,6 +24,11 @@
              reused here for the Campaign duel cards' two duelist portraits. -->
         <controls:OwnerPortraitConverter x:Key="OwnerPortraitConverter" />
 
+        <!-- Hides DuelRowTemplate's Reverse ComboBox for the series' first
+             real duel (DuelRowViewModel.ShowReverse) - its Reverse state is
+             always Locked in the real game, see that property's doc comment. -->
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+
         <!-- ── Shop Packs / Tutorials / Avatars checklist row ────────────────── -->
         <DataTemplate x:Key="CheckableItemTemplate">
             <CheckBox Content="{Binding Label}" IsChecked="{Binding IsChecked, Mode=OneWay}"
@@ -93,7 +98,7 @@
                                       SelectedItem="{Binding Forward, Mode=OneTime}"
                                       SelectionChanged="DuelForward_SelectionChanged" />
                         </StackPanel>
-                        <StackPanel Grid.Column="2">
+                        <StackPanel Grid.Column="2" Visibility="{Binding ShowReverse, Converter={StaticResource BoolToVis}}">
                             <TextBlock Text="REVERSE DUEL"
                                        FontFamily="Segoe UI" FontSize="9" FontWeight="Bold"
                                        Foreground="{StaticResource TextMutedBrush}" Margin="1,0,0,3" />
@@ -138,6 +143,43 @@
                                Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,6" />
                     <TextBox Text="{Binding Value, Mode=OneWay}" Style="{StaticResource NumBoxStyle}"
                              Width="190" LostFocus="StatValue_LostFocus" />
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+
+        <!-- ── Challenges tab row - one named duelist's portrait (same
+             OwnerPortraitConverter/OwnerDatabase pipeline the Campaign duel
+             chip uses) plus a single state ComboBox, so ChallengesList's
+             WrapPanel can lay out several per row same as the other
+             fixed-width card templates above. Commits on
+             ChallengeState_SelectionChanged in the code-behind, same
+             auto-commit convention as the Campaign duel dropdowns. ──────── -->
+        <DataTemplate x:Key="ChallengeRowTemplate">
+            <Border Width="215" Margin="0,0,10,10" Padding="10,8"
+                    Background="{StaticResource InputBgBrush}"
+                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                    CornerRadius="{StaticResource SlotRadius}">
+                <StackPanel>
+                    <Grid Margin="0,0,0,6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" Width="28" Height="28" Margin="0,0,6,0"
+                                Background="{StaticResource AppBgBrush}"
+                                BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                            <Image Source="{Binding CharacterId, Converter={StaticResource OwnerPortraitConverter}}"
+                                   Stretch="UniformToFill" />
+                        </Border>
+                        <TextBlock Grid.Column="1" Text="{Binding Label}" TextWrapping="Wrap"
+                                   VerticalAlignment="Center"
+                                   FontFamily="Segoe UI" FontSize="11" FontWeight="Bold"
+                                   Foreground="{StaticResource TextPrimaryBrush}" />
+                    </Grid>
+                    <ComboBox Style="{StaticResource ComboBoxStyle}" FontSize="10.5"
+                              ItemsSource="{Binding ChallengeStateNames, ElementName=Root}"
+                              SelectedItem="{Binding State, Mode=OneTime}"
+                              SelectionChanged="ChallengeState_SelectionChanged" />
                 </StackPanel>
             </Border>
         </DataTemplate>
@@ -281,13 +323,13 @@
                        FontFamily="Segoe UI" FontSize="14" FontWeight="Bold"
                        Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,14" />
 
-            <!-- ── Sub-tab strip ───────────────────────────────────────────────── -->
+            <!-- ── Sub-tab strip (alphabetical by label) ─────────────────────────── -->
             <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,0">
-                <Button x:Name="TabDuelPointsButton" Margin="0,0,4,0"
-                        Style="{StaticResource SaveEditorTabActiveStyle}" Click="TabButton_Click" Tag="DuelPoints">
+                <Button x:Name="TabAvatarsButton" Margin="0,0,4,0"
+                        Style="{StaticResource SaveEditorTabInactiveStyle}" Click="TabButton_Click" Tag="Avatars">
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="&#xE734;" FontFamily="Segoe MDL2 Assets" FontSize="14" Margin="0,0,8,0" />
-                        <TextBlock Text="DUEL POINTS" />
+                        <TextBlock Text="&#xE77B;" FontFamily="Segoe MDL2 Assets" FontSize="14" Margin="0,0,8,0" />
+                        <TextBlock Text="AVATARS" />
                     </StackPanel>
                 </Button>
                 <Button x:Name="TabCampaignButton" Margin="0,0,4,0"
@@ -297,18 +339,25 @@
                         <TextBlock Text="CAMPAIGN" />
                     </StackPanel>
                 </Button>
-                <Button x:Name="TabUnlocksButton" Margin="0,0,4,0"
-                        Style="{StaticResource SaveEditorTabInactiveStyle}" Click="TabButton_Click" Tag="Unlocks">
+                <Button x:Name="TabCardsButton" Margin="0,0,4,0"
+                        Style="{StaticResource SaveEditorTabInactiveStyle}" Click="TabButton_Click" Tag="Cards">
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="&#xE785;" FontFamily="Segoe MDL2 Assets" FontSize="14" Margin="0,0,8,0" />
-                        <TextBlock Text="UNLOCKS" />
+                        <TextBlock Text="&#xE71D;" FontFamily="Segoe MDL2 Assets" FontSize="14" Margin="0,0,8,0" />
+                        <TextBlock Text="CARDS" />
                     </StackPanel>
                 </Button>
-                <Button x:Name="TabAvatarsButton" Margin="0,0,4,0"
-                        Style="{StaticResource SaveEditorTabInactiveStyle}" Click="TabButton_Click" Tag="Avatars">
+                <Button x:Name="TabChallengesButton" Margin="0,0,4,0"
+                        Style="{StaticResource SaveEditorTabInactiveStyle}" Click="TabButton_Click" Tag="Challenges">
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="&#xE77B;" FontFamily="Segoe MDL2 Assets" FontSize="14" Margin="0,0,8,0" />
-                        <TextBlock Text="AVATARS" />
+                        <TextBlock Text="&#xE7EE;" FontFamily="Segoe MDL2 Assets" FontSize="14" Margin="0,0,8,0" />
+                        <TextBlock Text="CHALLENGES" />
+                    </StackPanel>
+                </Button>
+                <Button x:Name="TabDuelPointsButton" Margin="0,0,4,0"
+                        Style="{StaticResource SaveEditorTabActiveStyle}" Click="TabButton_Click" Tag="DuelPoints">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE734;" FontFamily="Segoe MDL2 Assets" FontSize="14" Margin="0,0,8,0" />
+                        <TextBlock Text="DUEL POINTS" />
                     </StackPanel>
                 </Button>
                 <Button x:Name="TabStatsButton" Margin="0,0,4,0"
@@ -318,11 +367,11 @@
                         <TextBlock Text="STATS" />
                     </StackPanel>
                 </Button>
-                <Button x:Name="TabCardsButton"
-                        Style="{StaticResource SaveEditorTabInactiveStyle}" Click="TabButton_Click" Tag="Cards">
+                <Button x:Name="TabUnlocksButton"
+                        Style="{StaticResource SaveEditorTabInactiveStyle}" Click="TabButton_Click" Tag="Unlocks">
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="&#xE71D;" FontFamily="Segoe MDL2 Assets" FontSize="14" Margin="0,0,8,0" />
-                        <TextBlock Text="CARDS" />
+                        <TextBlock Text="&#xE785;" FontFamily="Segoe MDL2 Assets" FontSize="14" Margin="0,0,8,0" />
+                        <TextBlock Text="UNLOCKS" />
                     </StackPanel>
                 </Button>
             </StackPanel>
@@ -518,12 +567,44 @@
                 <!-- ══════════════════════════════ Avatars ════════════════════════════ -->
                 <Grid x:Name="AvatarsSection" Visibility="Collapsed">
                     <DockPanel>
-                        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,12">
-                            <Button Content="UNLOCK ALL" Width="130" Margin="0,0,8,0"
-                                    Style="{StaticResource SecondaryButtonStyle}" Click="UnlockAllAvatars_Click" />
-                            <Button Content="LOCK ALL" Width="120"
-                                    Style="{StaticResource SlantedDangerButtonStyle}" HorizontalContentAlignment="Center"
-                                    Click="LockAllAvatars_Click" />
+                        <StackPanel DockPanel.Dock="Top">
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                <Button Content="UNLOCK ALL" Width="130" Margin="0,0,8,0"
+                                        Style="{StaticResource SecondaryButtonStyle}" Click="UnlockAllAvatars_Click" />
+                                <Button Content="LOCK ALL" Width="120"
+                                        Style="{StaticResource SlantedDangerButtonStyle}" HorizontalContentAlignment="Center"
+                                        Click="LockAllAvatars_Click" />
+                            </StackPanel>
+
+                            <!-- Same series-logo picker as the Campaign/Challenges
+                                 tabs (independent selection - ApplyAvatarSeriesButtonVisuals
+                                 swaps Style, AvatarSeriesLogoButton_Click picks). -->
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                <Button x:Name="AvatarSeriesYuGiOhButton" Style="{StaticResource SeriesLogoActiveStyle}"
+                                        Click="AvatarSeriesLogoButton_Click" Tag="YuGiOh" ToolTip="Yu-Gi-Oh!">
+                                    <Image Source="/Assets/icons/DM.png" Stretch="Uniform" />
+                                </Button>
+                                <Button x:Name="AvatarSeriesGXButton" Style="{StaticResource SeriesLogoInactiveStyle}"
+                                        Click="AvatarSeriesLogoButton_Click" Tag="YuGiOhGX" ToolTip="Yu-Gi-Oh! GX">
+                                    <Image Source="/Assets/icons/GX.png" Stretch="Uniform" />
+                                </Button>
+                                <Button x:Name="AvatarSeries5DButton" Style="{StaticResource SeriesLogoInactiveStyle}"
+                                        Click="AvatarSeriesLogoButton_Click" Tag="YuGiOh5D" ToolTip="Yu-Gi-Oh! 5D's">
+                                    <Image Source="/Assets/icons/5DS.png" Stretch="Uniform" />
+                                </Button>
+                                <Button x:Name="AvatarSeriesZEXALButton" Style="{StaticResource SeriesLogoInactiveStyle}"
+                                        Click="AvatarSeriesLogoButton_Click" Tag="YuGiOhZEXAL" ToolTip="Yu-Gi-Oh! ZEXAL">
+                                    <Image Source="/Assets/icons/ZEXAL.png" Stretch="Uniform" />
+                                </Button>
+                                <Button x:Name="AvatarSeriesARCVButton" Style="{StaticResource SeriesLogoInactiveStyle}"
+                                        Click="AvatarSeriesLogoButton_Click" Tag="YuGiOhARCV" ToolTip="Yu-Gi-Oh! ARC-V">
+                                    <Image Source="/Assets/icons/ARC-V.png" Stretch="Uniform" />
+                                </Button>
+                                <Button x:Name="AvatarSeriesVRAINSButton" Style="{StaticResource SeriesLogoInactiveStyle}"
+                                        Click="AvatarSeriesLogoButton_Click" Tag="YuGiOhVRAINS" ToolTip="Yu-Gi-Oh! VRAINS">
+                                    <Image Source="/Assets/icons/VRAINS.png" Stretch="Uniform" />
+                                </Button>
+                            </StackPanel>
                         </StackPanel>
                         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                             <ItemsControl x:Name="AvatarsList" ItemTemplate="{StaticResource CheckableItemTemplate}">
@@ -613,6 +694,57 @@
                             </ItemsControl>
                         </StackPanel>
                     </ScrollViewer>
+                </Grid>
+
+                <!-- ══════════════════════════════ Challenges ═════════════════════════ -->
+                <Grid x:Name="ChallengesSection" Visibility="Collapsed">
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Top">
+                            <TextBlock Text="Unlock, complete, or reset each duelist's Challenge individually. For whole-collection actions, use the Duelist Challenges buttons on the Unlocks tab instead."
+                                       TextWrapping="Wrap" Width="700" HorizontalAlignment="Left"
+                                       FontFamily="Segoe UI" FontSize="11.5"
+                                       Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,12" />
+
+                            <!-- Same series-logo picker as the Campaign tab
+                                 (independent selection - ApplyChallengeSeriesButtonVisuals
+                                 swaps Style, ChallengeSeriesLogoButton_Click picks),
+                                 just scoped to this tab so switching series here
+                                 doesn't disturb the Campaign tab's own selection. -->
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                <Button x:Name="ChallengeSeriesYuGiOhButton" Style="{StaticResource SeriesLogoActiveStyle}"
+                                        Click="ChallengeSeriesLogoButton_Click" Tag="YuGiOh" ToolTip="Yu-Gi-Oh!">
+                                    <Image Source="/Assets/icons/DM.png" Stretch="Uniform" />
+                                </Button>
+                                <Button x:Name="ChallengeSeriesGXButton" Style="{StaticResource SeriesLogoInactiveStyle}"
+                                        Click="ChallengeSeriesLogoButton_Click" Tag="YuGiOhGX" ToolTip="Yu-Gi-Oh! GX">
+                                    <Image Source="/Assets/icons/GX.png" Stretch="Uniform" />
+                                </Button>
+                                <Button x:Name="ChallengeSeries5DButton" Style="{StaticResource SeriesLogoInactiveStyle}"
+                                        Click="ChallengeSeriesLogoButton_Click" Tag="YuGiOh5D" ToolTip="Yu-Gi-Oh! 5D's">
+                                    <Image Source="/Assets/icons/5DS.png" Stretch="Uniform" />
+                                </Button>
+                                <Button x:Name="ChallengeSeriesZEXALButton" Style="{StaticResource SeriesLogoInactiveStyle}"
+                                        Click="ChallengeSeriesLogoButton_Click" Tag="YuGiOhZEXAL" ToolTip="Yu-Gi-Oh! ZEXAL">
+                                    <Image Source="/Assets/icons/ZEXAL.png" Stretch="Uniform" />
+                                </Button>
+                                <Button x:Name="ChallengeSeriesARCVButton" Style="{StaticResource SeriesLogoInactiveStyle}"
+                                        Click="ChallengeSeriesLogoButton_Click" Tag="YuGiOhARCV" ToolTip="Yu-Gi-Oh! ARC-V">
+                                    <Image Source="/Assets/icons/ARC-V.png" Stretch="Uniform" />
+                                </Button>
+                                <Button x:Name="ChallengeSeriesVRAINSButton" Style="{StaticResource SeriesLogoInactiveStyle}"
+                                        Click="ChallengeSeriesLogoButton_Click" Tag="YuGiOhVRAINS" ToolTip="Yu-Gi-Oh! VRAINS">
+                                    <Image Source="/Assets/icons/VRAINS.png" Stretch="Uniform" />
+                                </Button>
+                            </StackPanel>
+                        </StackPanel>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                            <ItemsControl x:Name="ChallengesList" ItemTemplate="{StaticResource ChallengeRowTemplate}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </DockPanel>
                 </Grid>
             </Grid>
         </DockPanel>

@@ -357,6 +357,320 @@ namespace YuGiOhSaveEditor.Services
             SetBattlePacksFlag(save, v, UnlockedBattlePacks.All);
         }
 
+        // ── Shop/Battle packs derived from Campaign story progress ──────────────
+
+        /// <summary>Public (not just an implementation detail of
+        /// SyncShopPacksFromCampaignState anymore) so SaveEditorView can pass
+        /// it to CanManuallyUnlockShopPack's lookup below.</summary>
+        public enum PackFlagKind { Shop, Battle }
+
+        /// <summary>Which real Campaign stage completing unlocks which shop/battle
+        /// pack duelist, user-supplied 2026-07-25 (real show milestones - the
+        /// stage a given duelist is introduced/beaten in each series). Stage
+        /// numbers are on-screen duel numbers, which - since every series'
+        /// KnownRealDuelRange starts at save array index 1 - equal the raw
+        /// CampaignSaveLayout duelIndex directly (Stage N = duelIndex N).
+        /// Grandpa Muto (Yu-Gi-Oh! Stage 2) is the one special case: per the
+        /// user, beating him unlocks not just his own booster pack but the
+        /// shop's gate itself (UnlockedContent.CardShop) - presumably because
+        /// he's the first shop-pack duelist encountered in the story.</summary>
+        private static readonly (LotdDuelSeries Series, int Stage, string Duelist, PackFlagKind Kind, uint Flag, bool AlsoUnlocksCardShopGate)[] CampaignShopPackUnlocks =
+        {
+            (LotdDuelSeries.YuGiOh, 2, "Grandpa Muto", PackFlagKind.Shop, (uint)UnlockedShopPacks.GrandpaMuto, true),
+            (LotdDuelSeries.YuGiOh, 3, "Mai Valentine", PackFlagKind.Shop, (uint)UnlockedShopPacks.MaiValentine, false),
+            (LotdDuelSeries.YuGiOh, 5, "Bakura", PackFlagKind.Shop, (uint)UnlockedShopPacks.Bakura, false),
+            (LotdDuelSeries.YuGiOh, 8, "Joey Wheeler", PackFlagKind.Shop, (uint)UnlockedShopPacks.JoeyWheeler, false),
+            (LotdDuelSeries.YuGiOh, 11, "Seto Kaiba", PackFlagKind.Shop, (uint)UnlockedShopPacks.SetoKaiba, false),
+            (LotdDuelSeries.YuGiOh, 13, "Yugi Muto", PackFlagKind.Shop, (uint)UnlockedShopPacks.Yugi, false),
+
+            (LotdDuelSeries.YuGiOhGX, 1, "Alexis Rhodes", PackFlagKind.Shop, (uint)UnlockedShopPacks.AlexisRhodes, false),
+            (LotdDuelSeries.YuGiOhGX, 3, "Bastion Misawa", PackFlagKind.Shop, (uint)UnlockedShopPacks.BastionMisawa, false),
+            (LotdDuelSeries.YuGiOhGX, 5, "Chazz Princeton", PackFlagKind.Shop, (uint)UnlockedShopPacks.ChazzPrinceton, false),
+            (LotdDuelSeries.YuGiOhGX, 7, "Syrus Truesdale", PackFlagKind.Shop, (uint)UnlockedShopPacks.SyrusTruesdale, false),
+            (LotdDuelSeries.YuGiOhGX, 9, "Jesse Anderson", PackFlagKind.Shop, (uint)UnlockedShopPacks.JesseAnderson, false),
+            (LotdDuelSeries.YuGiOhGX, 12, "Jaden Yuki", PackFlagKind.Shop, (uint)UnlockedShopPacks.JadenYuki, false),
+
+            (LotdDuelSeries.YuGiOh5D, 1, "Tetsu Trudge", PackFlagKind.Shop, (uint)UnlockedShopPacks.TetsuTrudge, false),
+            (LotdDuelSeries.YuGiOh5D, 4, "Leo & Luna", PackFlagKind.Shop, (uint)UnlockedShopPacks.LeoLuna, false),
+            (LotdDuelSeries.YuGiOh5D, 6, "Akiza Izinski", PackFlagKind.Shop, (uint)UnlockedShopPacks.AkizaIzinski, false),
+            (LotdDuelSeries.YuGiOh5D, 8, "Jack Atlas", PackFlagKind.Shop, (uint)UnlockedShopPacks.JackAtlas, false),
+            (LotdDuelSeries.YuGiOh5D, 12, "Crow Hogan", PackFlagKind.Shop, (uint)UnlockedShopPacks.Crow, false),
+            (LotdDuelSeries.YuGiOh5D, 15, "Yusei Fudo", PackFlagKind.Shop, (uint)UnlockedShopPacks.YuseiFudo, false),
+
+            (LotdDuelSeries.YuGiOhZEXAL, 1, "Cathy Katherine", PackFlagKind.Shop, (uint)UnlockedShopPacks.CathyKatherine, false),
+            (LotdDuelSeries.YuGiOhZEXAL, 4, "Quinton", PackFlagKind.Shop, (uint)UnlockedShopPacks.Quinton, false),
+            (LotdDuelSeries.YuGiOhZEXAL, 7, "Kite Tenjo", PackFlagKind.Shop, (uint)UnlockedShopPacks.KiteTenjo, false),
+            (LotdDuelSeries.YuGiOhZEXAL, 11, "Shark", PackFlagKind.Shop, (uint)UnlockedShopPacks.Shark, false),
+            (LotdDuelSeries.YuGiOhZEXAL, 15, "Yuma Tsukumo", PackFlagKind.Shop, (uint)UnlockedShopPacks.YumaTsukumo, false),
+
+            (LotdDuelSeries.YuGiOhARCV, 1, "Gong Strong", PackFlagKind.Shop, (uint)UnlockedShopPacks.GongStrong, false),
+            (LotdDuelSeries.YuGiOhARCV, 6, "Zuzu Boyle", PackFlagKind.Shop, (uint)UnlockedShopPacks.ZuzuBoyle, false),
+            (LotdDuelSeries.YuGiOhARCV, 11, "Shay Obsidian", PackFlagKind.Shop, (uint)UnlockedShopPacks.Shay, false),
+            (LotdDuelSeries.YuGiOhARCV, 15, "Declan Akaba", PackFlagKind.Shop, (uint)UnlockedShopPacks.DeclanAkaba, false),
+            (LotdDuelSeries.YuGiOhARCV, 21, "Yuya Sakaki", PackFlagKind.Shop, (uint)UnlockedShopPacks.YuyaSakaki, false),
+
+            (LotdDuelSeries.YuGiOhVRAINS, 1, "Playmaker", PackFlagKind.Shop, (uint)UnlockedShopPacks.Playmaker, false),
+            // Blue Angel/Soulburner/Varis/Ai are sold as normal duelist shop
+            // packs in-game, but their real flags live in UnlockedBattlePacks,
+            // not UnlockedShopPacks - see that enum's doc comment.
+            (LotdDuelSeries.YuGiOhVRAINS, 8, "Blue Angel", PackFlagKind.Battle, (uint)UnlockedBattlePacks.BlueAngel, false),
+            (LotdDuelSeries.YuGiOhVRAINS, 13, "Soulburner", PackFlagKind.Battle, (uint)UnlockedBattlePacks.Soulburner, false),
+            (LotdDuelSeries.YuGiOhVRAINS, 21, "Varis", PackFlagKind.Battle, (uint)UnlockedBattlePacks.Varis, false),
+            (LotdDuelSeries.YuGiOhVRAINS, 25, "Ai", PackFlagKind.Battle, (uint)UnlockedBattlePacks.Ai, false),
+        };
+
+        /// <summary>
+        /// Recomputes every duelist shop/battle pack flag (plus the Grandpa
+        /// Muto -> CardShop gate special case) from scratch against the
+        /// Campaign chunk's current duel states, per CampaignShopPackUnlocks -
+        /// same recompute-not-increment approach as StatsLayout's Recalculate*
+        /// methods, so this can never drift regardless of how a duel's state
+        /// got there (per-duel dropdown, bulk series buttons, or bulk
+        /// campaign-wide buttons). A pack unlocks exactly when its milestone
+        /// stage's forward state reads Complete, and re-locks the moment it
+        /// doesn't (unlock AND relock - reverse-mode state is intentionally
+        /// ignored, since replaying a story beat as the opponent isn't a real
+        /// story completion).
+        ///
+        /// Call after every Campaign duel-state write (see
+        /// SaveEditorView.DuelStateChanged/BulkSetSeries/BulkSetAll) so the
+        /// Unlocks tab's shop/battle pack checkboxes never drift from what the
+        /// Campaign tab actually shows.
+        /// </summary>
+        public static void SyncShopPacksFromCampaignState(byte[] save, LotdSaveVersion v)
+        {
+            var shopPacks = GetShopPacks(save, v);
+            var battlePacks = GetBattlePacksFlag(save, v);
+            var content = GetUnlockedContent(save, v);
+
+            var series = CampaignSaveLayout.GetSeries(v);
+            foreach (var entry in CampaignShopPackUnlocks)
+            {
+                int seriesIndex = Array.IndexOf(series, entry.Series);
+                if (seriesIndex < 0) continue; // series not present in this save version (e.g. VRAINS in the older Lotd format)
+
+                bool complete = CampaignSaveLayout.GetState(save, v, seriesIndex, entry.Stage) == LotdCampaignDuelState.Complete;
+
+                if (entry.Kind == PackFlagKind.Shop)
+                    shopPacks = complete ? shopPacks | (UnlockedShopPacks)entry.Flag : shopPacks & ~(UnlockedShopPacks)entry.Flag;
+                else
+                    battlePacks = complete ? battlePacks | (UnlockedBattlePacks)entry.Flag : battlePacks & ~(UnlockedBattlePacks)entry.Flag;
+
+                if (entry.AlsoUnlocksCardShopGate)
+                    content = complete ? content | UnlockedContent.CardShop : content & ~UnlockedContent.CardShop;
+            }
+
+            SetShopPacks(save, v, shopPacks);
+            SetBattlePacksFlag(save, v, battlePacks);
+            SetUnlockedContent(save, v, content);
+        }
+
+        /// <summary>
+        /// True if it's safe to MANUALLY unlock a specific story-stage-gated
+        /// shop/battle pack duelist right now - user-specified failsafe
+        /// (2026-07-25): "if the duel that unlocks a pack shop is not
+        /// complete then it can not be unlocked either." Looks up the pack's
+        /// milestone Series+Stage in CampaignShopPackUnlocks and checks
+        /// whether that stage's forward state currently reads Complete - the
+        /// exact same source of truth SyncShopPacksFromCampaignState writes
+        /// from, so the two can never disagree.
+        ///
+        /// Packs with no CampaignShopPackUnlocks entry - Epic Dawn/War of
+        /// the Giants/War of the Giants Round 2, gated on Wins_Nonmatch
+        /// thresholds instead (see StatsLayout.SyncBattlePackUnlocksFromNonmatchWins,
+        /// a completely different, already self-consistent mechanism) -
+        /// aren't covered by this guard and always return true.
+        /// </summary>
+        public static bool CanManuallyUnlockShopPack(byte[] save, LotdSaveVersion v, PackFlagKind kind, uint flag)
+        {
+            var series = CampaignSaveLayout.GetSeries(v);
+            foreach (var entry in CampaignShopPackUnlocks)
+            {
+                if (entry.Kind != kind || entry.Flag != flag) continue;
+
+                int seriesIndex = Array.IndexOf(series, entry.Series);
+                if (seriesIndex < 0) return true; // series not present in this save version - nothing to gate on
+
+                return CampaignSaveLayout.GetState(save, v, seriesIndex, entry.Stage) == LotdCampaignDuelState.Complete;
+            }
+
+            return true; // not a story-stage-gated pack (Epic Dawn/War of the Giants[/Round2]) - no campaign gate here
+        }
+
+        // ── Duelist Challenges derived from Campaign story progress ─────────────
+
+        /// <summary>
+        /// One-directional: bumps a duelist's Challenge from Locked to
+        /// Available once every real Campaign duel (forward AND reverse)
+        /// featuring that character - across every series they appear in via
+        /// CampaignDuelNames.BySeries' OwnerA/OwnerB ids, which share the
+        /// same CharacterId space as DuelistChallengeSlots (confirmed by
+        /// cross-checking all 158 names against OwnerDatabase, 0 mismatches)
+        /// - reads Complete. User-specified rule (2026-07-25): "if all the
+        /// campaign duels and reverse duels involving a character are
+        /// complete, unlock the challenge for that character."
+        ///
+        /// Deliberately one-directional (never re-locks, never downgrades an
+        /// already Available/Failed/Complete challenge back down) - unlike
+        /// SyncShopPacksFromCampaignState/SyncBattlePackUnlocksFromNonmatchWins's
+        /// unlock-AND-relock behavior. Those were both plain binary pack
+        /// flags with no player-progress state layered on top; forcibly
+        /// relocking a Challenge here could erase real recorded progress
+        /// (Failed/Complete) just because an unrelated later Campaign edit
+        /// reset some duel state.
+        ///
+        /// A duelist with zero known Campaign appearances (not in
+        /// CampaignDuelNames at all - many Challenge-only opponents never
+        /// appear as a named Campaign duel's portrait) is left completely
+        /// untouched; there's nothing to derive "all complete" from, and
+        /// treating an empty set as vacuously true would incorrectly
+        /// force-unlock every such challenge immediately.
+        ///
+        /// Call after every Campaign duel-state write (see
+        /// SaveEditorView.DuelStateChanged/BulkSetSeries/BulkSetAll), same
+        /// call sites as SyncShopPacksFromCampaignState.
+        /// </summary>
+        public static void SyncChallengesFromCampaignState(byte[] save, LotdSaveVersion v)
+        {
+            var series = CampaignSaveLayout.GetSeries(v);
+            int numSlots = LotdSaveFormat.GetNumDeckDataSlots(v);
+
+            foreach (var entry in DuelistChallengeSlots.Entries)
+            {
+                if (entry.SlotIndex >= numSlots) continue; // slot doesn't exist in this save format - see DuelistChallengeSlots' doc comment
+                if (GetChallengeState(save, v, entry.SlotIndex) != DeulistChallengeState.Locked) continue; // already unlocked/attempted/completed - never downgrade
+
+                var (foundAny, allComplete) = GetCampaignCompletionStatus(save, v, series, entry.CharacterId);
+                if (foundAny && allComplete)
+                    SetChallengeState(save, v, entry.SlotIndex, DeulistChallengeState.Available);
+            }
+        }
+
+        /// <summary>
+        /// One-directional: unlocks a character's avatar the moment every
+        /// real Campaign duel (forward AND reverse) featuring them reads
+        /// Complete - same rule and same "leave zero-appearance characters
+        /// alone" reasoning as SyncChallengesFromCampaignState above, just
+        /// applied to UnlockedAvatars instead of the Challenges array.
+        /// User-specified (2026-07-25): "if all the campaign duels and
+        /// reverse duels involving a character are complete, then unlock the
+        /// avatar for that character."
+        ///
+        /// Only covers avatar ids 0..LotdSaveFormat.NumAvatarSlots-1 (153)
+        /// out of the full 0-191 CharacterId space DuelistChallengeSlots
+        /// uses - UnlockedAvatars is a fixed 153-slot bitfield (see that
+        /// field's own doc comment: "ids only go up to 152 in chardata.bin"),
+        /// so newer characters past id 152 (much of ZEXAL, all of VRAINS'
+        /// second block) simply have no avatar slot to unlock at all,
+        /// same limitation the existing Avatars tab already has.
+        ///
+        /// Call after every Campaign duel-state write, same call sites as
+        /// SyncShopPacksFromCampaignState/SyncChallengesFromCampaignState.
+        /// </summary>
+        public static void SyncAvatarsFromCampaignState(byte[] save, LotdSaveVersion v)
+        {
+            var series = CampaignSaveLayout.GetSeries(v);
+
+            for (int avatarId = 0; avatarId < LotdSaveFormat.NumAvatarSlots; avatarId++)
+            {
+                if (GetAvatarUnlocked(save, v, avatarId)) continue; // already unlocked - never downgrade
+
+                var (foundAny, allComplete) = GetCampaignCompletionStatus(save, v, series, (byte)avatarId);
+                if (foundAny && allComplete)
+                    SetAvatarUnlocked(save, v, avatarId, true);
+            }
+        }
+
+        /// <summary>
+        /// True if it's safe to MANUALLY unlock/complete a character's
+        /// avatar or challenge right now - user-specified failsafe
+        /// (2026-07-25): "if a duelist does not have all his duels
+        /// completed, you can not unlock the avatar [or] the challenge for
+        /// it." A character with zero known Campaign appearances has
+        /// nothing to gate on and is always allowed - same "leave
+        /// untouched" reasoning as SyncChallengesFromCampaignState/
+        /// SyncAvatarsFromCampaignState above (there's no prerequisite to
+        /// violate). This only governs the UNLOCK direction - locking/
+        /// resetting something is never blocked, so callers must only call
+        /// this before writing a state that counts as "unlocked" (anything
+        /// other than Locked for a Challenge, or true for an avatar).
+        /// </summary>
+        public static bool CanManuallyUnlock(byte[] save, LotdSaveVersion v, byte characterId)
+        {
+            var series = CampaignSaveLayout.GetSeries(v);
+            var (_, allComplete) = GetCampaignCompletionStatus(save, v, series, characterId);
+            return allComplete;
+        }
+
+        /// <summary>Shared by SyncChallengesFromCampaignState/SyncAvatarsFromCampaignState/
+        /// CanManuallyUnlock: for a given characterId, scans every real
+        /// Campaign duel appearance (via CampaignDuelNames.BySeries'
+        /// OwnerA/OwnerB, across every series in <paramref name="series"/>)
+        /// and reports both whether any were found at all (FoundAny) and
+        /// whether every one found currently reads Complete on both the
+        /// forward and reverse duel (AllComplete - defaults true/vacuous
+        /// when FoundAny is false, which is exactly the behavior
+        /// CanManuallyUnlock wants: nothing to gate on = allowed). Callers
+        /// wanting the Sync* "auto-unlock" behavior must additionally check
+        /// FoundAny, since an empty appearance set must never be treated as
+        /// "go ahead and unlock" there.</summary>
+        private static (bool FoundAny, bool AllComplete) GetCampaignCompletionStatus(byte[] save, LotdSaveVersion v, LotdDuelSeries[] series, byte characterId)
+        {
+            bool foundAny = false;
+
+            for (int s = 0; s < series.Length; s++)
+            {
+                if (!CampaignDuelNames.BySeries.TryGetValue(series[s], out var duels)) continue;
+
+                for (int i = 0; i < duels.Length; i++)
+                {
+                    var (_, _, ownerA, ownerB) = duels[i];
+                    if (ownerA != characterId && ownerB != characterId) continue;
+
+                    foundAny = true;
+                    int duelIndex = i + 1; // display number == raw duelIndex - see CampaignDuelNames.Get
+                    bool complete = CampaignSaveLayout.GetState(save, v, s, duelIndex) == LotdCampaignDuelState.Complete
+                                 && CampaignSaveLayout.GetReverseState(save, v, s, duelIndex) == LotdCampaignDuelState.Complete;
+                    if (!complete) return (true, false);
+                }
+            }
+
+            return (foundAny, true);
+        }
+
+        /// <summary>
+        /// One-directional: unlocks the Duelist Challenges content gate
+        /// (UnlockedContent.DuelistChallenges) the moment any real named
+        /// challenge (DuelistChallengeSlots.Entries) reads anything other
+        /// than Locked. User-specified rule (2026-07-25): "if at least 1
+        /// duelist challenge is unlocked then the gate should be unlocked."
+        /// Only scans the 158 known real slots, not the full 477/700-entry
+        /// raw array (RecalculateChallengeStats scans the full array for its
+        /// own Games_Challenge/Wins_Challenge purposes, but this gate is
+        /// specifically about the player-facing Duelist Challenge list,
+        /// which this app only knows the real names of via that table).
+        /// Never re-locks the gate - same one-directional reasoning as
+        /// SyncChallengesFromCampaignState above.
+        ///
+        /// Call after every Challenge-state write: the per-duelist dropdown,
+        /// the bulk Unlock/Complete/Reset Challenges buttons, and
+        /// SyncChallengesFromCampaignState above (since that can also newly
+        /// unlock a challenge).
+        /// </summary>
+        public static void SyncChallengeGateFromChallenges(byte[] save, LotdSaveVersion v)
+        {
+            int numSlots = LotdSaveFormat.GetNumDeckDataSlots(v);
+            bool anyUnlocked = DuelistChallengeSlots.Entries
+                .Where(entry => entry.SlotIndex < numSlots)
+                .Any(entry => GetChallengeState(save, v, entry.SlotIndex) != DeulistChallengeState.Locked);
+
+            if (!anyUnlocked) return;
+
+            var content = GetUnlockedContent(save, v);
+            if ((content & UnlockedContent.DuelistChallenges) != 0) return;
+            SetUnlockedContent(save, v, content | UnlockedContent.DuelistChallenges);
+        }
+
         // ── Raw helpers ───────────────────────────────────────────────────────
         private static long ReadI64(byte[] b, int offset)
         {

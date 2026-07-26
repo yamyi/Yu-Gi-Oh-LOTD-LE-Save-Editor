@@ -1,28 +1,50 @@
 namespace YuGiOhSaveEditor.Services
 {
     /// <summary>
-    /// The 42 known campaign/duel counters tracked in the Stats chunk (see
+    /// The 43 known campaign/duel counters tracked in the Stats chunk (see
     /// SaveLayout's whole-file map — fixed at LotdSaveFormat.StatsOffset,
-    /// 0x24/36, in both save formats). Ported from pixeltris/Lotd's
-    /// StatSaveType enum (Lotd/SaveData/StatSaveData.cs), which the user's own
-    /// WinForms reference tool (Arefu/Wolf's Elroy.SaveStatManager) matches
-    /// member-for-member and in the same order — that ordering is exactly the
-    /// on-disk slot order, so StatType's integer value IS the stat's index in
-    /// the chunk (0-based).
+    /// 0x24/36, in both save formats). Indices 0-41 ported verbatim from
+    /// pixeltris/Lotd's StatSaveType enum (Lotd/SaveData/StatSaveData.cs),
+    /// which the user's own WinForms reference tool (Arefu/Wolf's
+    /// Elroy.SaveStatManager) matches member-for-member and in the same
+    /// order — that ordering is exactly the on-disk slot order, so StatType's
+    /// integer value IS the stat's index in the chunk (0-based).
     ///
     /// pixeltris' enum has one further "Unknown" 43rd member after
     /// Decks_Created ("There seems to be one additional value. Is this
-    /// actually part of the stat data or something separate?") — deliberately
-    /// left out here since it isn't a real, nameable stat, matching Elroy's
-    /// own tool which also stops at Decks_Created.
+    /// actually part of the stat data or something separate?"). This project
+    /// has since identified it (see Cards_Won_Campaign below) and formally
+    /// named it, unlike Elroy's tool which stops at Decks_Created.
     ///
     /// LinkEvolution reserves 100 stat slots total (LotdSaveFormat.GetNumStats),
     /// not just 43 — the same "wider on-disk capacity than known fields" pattern
     /// already seen in CardCollectionLayout (GetNumCardSlots vs GetNumCards).
-    /// Slots 42-99 have no known real-world meaning (presumably newer counters
+    /// Slots 43-99 have no known real-world meaning (presumably newer counters
     /// added for Link Evolution's expanded content) and are intentionally left
-    /// untouched: StatType/GetKnownStats only expose indices 0-41, and nothing
+    /// untouched: StatType/GetKnownStats only expose indices 0-42, and nothing
     /// in this class ever bulk-writes across the full GetNumStats(v) range.
+    ///
+    /// Cards_Won_Campaign (index 42, right after Decks_Created) - identified
+    /// 2026-07-26 via a series of before/after save diffs: it's a count of new
+    /// card copies actually granted as a post-duel reward, not a win/score
+    /// counter. Per the game's own reward rule a loss normally grants 1
+    /// random card and a win grants 3, but nothing is granted for any card
+    /// the player already owns the max copies of - confirmed by two
+    /// independent loss diffs that left it completely flat (99→99, 105→105,
+    /// both with zero CardList bytes touched - the rolled cards were already
+    /// maxed) and one win diff that showed +3 (99→102) alongside exactly 3
+    /// CardList bytes flipping from 0 to owned. Also confirmed scoped to
+    /// duel rewards specifically, not "any new card obtained": an 8-card shop
+    /// booster purchase (-200 Duel Points, 8 CardList bytes touched, 7 of
+    /// them brand new) left it completely flat. All of this testing was done
+    /// exclusively on Yu-Gi-Oh! campaign duels, forward mode - whether
+    /// Challenge or Multiplayer wins/losses also move this same slot is
+    /// unconfirmed, hence the "_Campaign" in its name; treat that scope as a
+    /// working assumption, not a proven fact. Like Decks_Created, it's a
+    /// lifetime running total with no way to recompute it from current save
+    /// state, so it's intentionally untouched by every Recalculate* method
+    /// here - editable directly via the Stats tab same as any other stat, but
+    /// nothing in this app derives or resets its value automatically.
     /// </summary>
     public enum StatType
     {
@@ -68,6 +90,13 @@ namespace YuGiOhSaveEditor.Services
         Damage_Reflect = 39,
         Chains = 40,
         Decks_Created = 41,
+
+        /// <summary>Count of new card copies granted as post-duel rewards
+        /// (1 per loss, 3 per win, 0 for any card already owned at max copies)
+        /// - see this enum's doc comment for the full identification writeup.
+        /// Confirmed scoped to Campaign duels specifically; Challenge/
+        /// Multiplayer scope is unconfirmed.</summary>
+        Cards_Won_Campaign = 42,
     }
 
     /// <summary>
@@ -91,7 +120,7 @@ namespace YuGiOhSaveEditor.Services
         /// <summary>Number of stats with a known name/meaning (see StatType) —
         /// NOT the same as GetNumStats(v) (43/100 on-disk slots). See this
         /// class's doc comment for why the gap is left alone.</summary>
-        public static int NumKnownStats => Enum.GetValues<StatType>().Length; // 42
+        public static int NumKnownStats => Enum.GetValues<StatType>().Length; // 43
 
         public static int GetOffset(LotdSaveVersion v, int index) =>
             LotdSaveFormat.StatsOffset + index * EntryBytes;
@@ -115,6 +144,175 @@ namespace YuGiOhSaveEditor.Services
         }
 
         public static void Set(byte[] save, LotdSaveVersion v, StatType stat, long value) => Set(save, v, (int)stat, value);
+
+        /// <summary>
+        /// Recomputes the 6 campaign counters (Games_Campaign[_Normal/_Reverse],
+        /// Wins_Campaign[_Normal/_Reverse]) from scratch by scanning every real
+        /// duel slot in CampaignSaveLayout, rather than incrementing them.
+        ///
+        /// CampaignSaveLayout (raw per-duel state) and this Stats chunk are
+        /// completely separate structures on disk - nothing keeps them in sync
+        /// automatically. Editing duel states directly (single dropdown or the
+        /// bulk series/all buttons) used to leave the two arbitrarily out of
+        /// step, e.g. an entire series flagged Complete while the lifetime
+        /// counters here still read 0. That mismatch is the leading suspect for
+        /// saves getting stuck on the post-duel results screen after a manually
+        /// edited campaign duel is actually played and won.
+        ///
+        /// Call this after every campaign duel-state write so the two chunks
+        /// can never drift apart again. Only real duel slots (per
+        /// CampaignSaveLayout.KnownRealDuelRange) are counted - the unused
+        /// padding slots that bulk actions also happen to touch are ignored,
+        /// same as the Campaign tab's own display filtering.
+        ///
+        /// AvailableAttempted counts toward Games but not Wins (attempted, not
+        /// yet beaten); Complete counts toward both; Locked/Available/
+        /// AvailableAlt count toward neither - matching LotdCampaignDuelState's
+        /// own doc comments on what each state means in-game.
+        /// </summary>
+        public static void RecalculateCampaignStats(byte[] save, LotdSaveVersion v)
+        {
+            long forwardGames = 0, forwardWins = 0, reverseGames = 0, reverseWins = 0;
+            var series = CampaignSaveLayout.GetSeries(v);
+
+            for (int s = 0; s < series.Length; s++)
+            {
+                int start = 0;
+                int count = CampaignSaveLayout.DuelsPerSeries;
+                if (CampaignSaveLayout.KnownRealDuelRange.TryGetValue(series[s], out var range))
+                {
+                    start = range.RealStart;
+                    count = range.RealCount;
+                }
+
+                for (int i = 0; i < count; i++)
+                {
+                    int d = start + i;
+                    var forward = CampaignSaveLayout.GetState(save, v, s, d);
+                    var reverse = CampaignSaveLayout.GetReverseState(save, v, s, d);
+
+                    if (forward == LotdCampaignDuelState.Complete) { forwardGames++; forwardWins++; }
+                    else if (forward == LotdCampaignDuelState.AvailableAttempted) forwardGames++;
+
+                    if (reverse == LotdCampaignDuelState.Complete) { reverseGames++; reverseWins++; }
+                    else if (reverse == LotdCampaignDuelState.AvailableAttempted) reverseGames++;
+                }
+            }
+
+            Set(save, v, StatType.Games_Campaign_Normal, forwardGames);
+            Set(save, v, StatType.Games_Campaign_Reverse, reverseGames);
+            Set(save, v, StatType.Games_Campaign, forwardGames + reverseGames);
+
+            Set(save, v, StatType.Wins_Campaign_Normal, forwardWins);
+            Set(save, v, StatType.Wins_Campaign_Reverse, reverseWins);
+            Set(save, v, StatType.Wins_Campaign, forwardWins + reverseWins);
+
+            RecalculateNonmatchWins(save, v);
+        }
+
+        /// <summary>
+        /// Recomputes Games_Challenge/Wins_Challenge from scratch by scanning
+        /// every duelist-challenge slot (MiscSaveLayout's Challenges array, one
+        /// DeulistChallengeState per deck-data slot) - same
+        /// recompute-not-increment approach as RecalculateCampaignStats, and
+        /// for the same reason: the bulk Unlock/Complete/Reset Challenges
+        /// buttons only ever wrote MiscSaveLayout.SetAllChallenges, never
+        /// touching this Stats chunk. Failed counts toward Games only
+        /// (attempted, not won); Complete counts toward both; Locked/Available
+        /// count toward neither.
+        ///
+        /// Call this after any challenge-state write (currently only the bulk
+        /// Unlock/Complete/Reset Challenges buttons - there's no per-challenge
+        /// editor yet) so Games_Challenge/Wins_Challenge - and, transitively,
+        /// Wins_Nonmatch - never drift from the actual challenge states.
+        /// </summary>
+        public static void RecalculateChallengeStats(byte[] save, LotdSaveVersion v)
+        {
+            long games = 0, wins = 0;
+            int n = LotdSaveFormat.GetNumDeckDataSlots(v);
+
+            for (int i = 0; i < n; i++)
+            {
+                var state = MiscSaveLayout.GetChallengeState(save, v, i);
+                if (state == DeulistChallengeState.Complete) { games++; wins++; }
+                else if (state == DeulistChallengeState.Failed) games++;
+            }
+
+            Set(save, v, StatType.Games_Challenge, games);
+            Set(save, v, StatType.Wins_Challenge, wins);
+
+            RecalculateNonmatchWins(save, v);
+        }
+
+        /// <summary>
+        /// Wins_Nonmatch is defined as Campaign wins + Challenge wins combined
+        /// (i.e. every non-match win - as opposed to Wins_Match, which is
+        /// specifically best-of-three). Recomputed from whichever of
+        /// Wins_Campaign/Wins_Challenge is currently on disk rather than
+        /// incremented directly, so it's called from both
+        /// RecalculateCampaignStats and RecalculateChallengeStats and can
+        /// never end up out of step with either one.
+        /// </summary>
+        public static void RecalculateNonmatchWins(byte[] save, LotdSaveVersion v)
+        {
+            long campaignWins = Get(save, v, StatType.Wins_Campaign);
+            long challengeWins = Get(save, v, StatType.Wins_Challenge);
+            Set(save, v, StatType.Wins_Nonmatch, campaignWins + challengeWins);
+            SyncBattlePackUnlocksFromNonmatchWins(save, v);
+        }
+
+        /// <summary>
+        /// Keeps the 3 real Battle Packs' unlock flags (plus the general
+        /// "Battle Pack" content gate) in sync with Wins_Nonmatch, per the
+        /// user's own milestone thresholds (2026-07-25):
+        ///   - Wins_Nonmatch >= 5:  unlock the Battle Pack content gate
+        ///     (UnlockedContent.BattlePack) AND Epic Dawn (UnlockedShopPacks.
+        ///     EpicDawn - its real flag lives in ShopPacks despite being a
+        ///     "Battle Pack" in-game, see that enum's doc comment).
+        ///   - Wins_Nonmatch >= 10: unlock War of the Giants
+        ///     (UnlockedBattlePacks.WarOfTheGiants).
+        ///   - Wins_Nonmatch >= 20: unlock War of the Giants Round 2
+        ///     (UnlockedBattlePacks.WarOfTheGiantsRound2).
+        /// Unlock AND relock: each flag is set to exactly match its threshold
+        /// every time, so a Wins_Nonmatch drop below a threshold (e.g. via
+        /// Campaign/Challenge state edits recomputing it lower) re-locks that
+        /// content again - same unlock-and-relock behavior requested for the
+        /// original per-pack version of this, just re-keyed off Wins_Nonmatch.
+        ///
+        /// Called automatically from RecalculateNonmatchWins (itself called
+        /// by RecalculateCampaignStats/RecalculateChallengeStats), and
+        /// directly from SaveEditorView.StatValue_LostFocus when the user
+        /// edits the Wins_Nonmatch row by hand - so this can never drift from
+        /// whatever Wins_Nonmatch currently reads, regardless of how it got
+        /// there.
+        /// </summary>
+        public static void SyncBattlePackUnlocksFromNonmatchWins(byte[] save, LotdSaveVersion v)
+        {
+            long wins = Get(save, v, StatType.Wins_Nonmatch);
+
+            var content = MiscSaveLayout.GetUnlockedContent(save, v);
+            content = wins >= 5 ? content | UnlockedContent.BattlePack : content & ~UnlockedContent.BattlePack;
+            MiscSaveLayout.SetUnlockedContent(save, v, content);
+
+            var shopPacks = MiscSaveLayout.GetShopPacks(save, v);
+            shopPacks = wins >= 5 ? shopPacks | UnlockedShopPacks.EpicDawn : shopPacks & ~UnlockedShopPacks.EpicDawn;
+            MiscSaveLayout.SetShopPacks(save, v, shopPacks);
+
+            var battlePacks = MiscSaveLayout.GetBattlePacksFlag(save, v);
+            battlePacks = wins >= 10 ? battlePacks | UnlockedBattlePacks.WarOfTheGiants : battlePacks & ~UnlockedBattlePacks.WarOfTheGiants;
+            battlePacks = wins >= 20 ? battlePacks | UnlockedBattlePacks.WarOfTheGiantsRound2 : battlePacks & ~UnlockedBattlePacks.WarOfTheGiantsRound2;
+            MiscSaveLayout.SetBattlePacksFlag(save, v, battlePacks);
+        }
+
+        /// <summary>Adds <paramref name="by"/> (default 1) to a stat's current
+        /// value, for the handful of counters - currently just Decks_Created -
+        /// that track a lifetime running total rather than something
+        /// recomputable from the save's current state (a cleared/overwritten
+        /// slot doesn't erase the fact that a deck was created there at some
+        /// point). Unlike the Recalculate* methods above, this reads-then-adds,
+        /// so callers must only invoke it exactly once per real occurrence.</summary>
+        public static void Increment(byte[] save, LotdSaveVersion v, StatType stat, long by = 1) =>
+            Set(save, v, stat, Get(save, v, stat) + by);
 
         /// <summary>Human-readable label for a known stat, for the Stats tab's list.</summary>
         public static string GetLabel(StatType stat) => stat switch
@@ -161,6 +359,7 @@ namespace YuGiOhSaveEditor.Services
             StatType.Damage_Reflect => "Reflected Damage",
             StatType.Chains => "Chains Activated",
             StatType.Decks_Created => "Decks Created",
+            StatType.Cards_Won_Campaign => "Cards Won (Campaign)",
             _ => stat.ToString(),
         };
     }

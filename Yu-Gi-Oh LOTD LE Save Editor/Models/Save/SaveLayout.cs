@@ -24,10 +24,10 @@ namespace YuGiOhSaveEditor.Services
     /// Whole-file map (offsets/lengths shown for LinkEvolution; file length 44008):
     ///   0x00000  Header             20 bytes    -&gt; SaveSignatureFixer (sub-fields below)
     ///   0x00014  Unknown lead-in    16 bytes    unidentified
-    ///   0x00024  Stats              0x320 (800) unidentified internals; 100 stats x 8 bytes each
+    ///   0x00024  Stats              0x320 (800) -&gt; StatsLayout; 100 slots x 8 bytes, only 43 named (indices 0-42), 43-99 unidentified
     ///   0x00344  BattlePacks        0xC94 (3220) unidentified internals; 5 packs x 644 bytes each
     ///   0x00FD8  Misc               0xB98 (2968) -&gt; MiscSaveLayout
-    ///   0x01B70  Campaign           0x1C58 (7256) -&gt; CampaignSaveLayout
+    ///   0x01B70  Campaign           0x1C58 (7256) -&gt; CampaignSaveLayout (sub-fields below)
     ///   0x037C8  Decks              0x2600 (9728) -&gt; SlotLayout (32 slots x 0x130 bytes)
     ///   0x05DC8  CardList           0x4E20 (20000) -&gt; CardCollectionLayout (see note below)
     ///   0x0ABE8  EOF                (= GetFileLength(LinkEvolution))
@@ -65,11 +65,58 @@ namespace YuGiOhSaveEditor.Services
     ///   0x1B68  4 bytes             Tutorials             int32 flags (see CompleteTutorials)
     ///   0x1B6C  4 bytes             UnlockedContent       int32 flags (see UnlockedContent)
     ///
+    /// Campaign sub-fields (see CampaignSaveLayout.cs for the byte math;
+    /// offsets below are relative to GetCampaignDataOffset(v)):
+    ///   +0x0  4 bytes   last-played series index   int32, LotdDuelSeries value (GetLastPlayedSeriesIndex)
+    ///   +0x4  4 bytes   last-played duel index     int32, Stage number/duelIndex (GetLastPlayedDuelIndex)
+    ///   then per series (8 + 50*24 bytes each), per duel record (24 bytes):
+    ///     +0x0  4 bytes   State                 int32, LotdCampaignDuelState (GetState/SetState)
+    ///     +0x4  4 bytes   ReverseState          int32, LotdCampaignDuelState (GetReverseState/SetReverseState)
+    ///     +0x8  4 bytes   LastDuelPointsAwarded int32, DP paid the last time this duel was won (GetLastDuelPointsAwarded)
+    ///     +0xC  12 bytes  (3x unidentified int32 - never reverse-engineered)
+    ///   plus an 8-byte unidentified trailer right after each series' duel
+    ///   index 0 (Duel0TrailerBytes) - never reverse-engineered either.
+    ///   Also worth noting: duel index 0 in each series (documented in
+    ///   CampaignSaveLayout as "unused padding") has its own State field that
+    ///   was observed moving to Complete in lockstep with a whole series
+    ///   finishing - see EnsurePrerequisitesComplete's doc comment for the
+    ///   full writeup; likely a per-series "100% complete" flag, not
+    ///   genuinely unused.
+    ///
     /// Notes on unidentified/padded regions:
-    ///   - Unknown lead-in (16B), Stats' per-entry internals, and BattlePacks'
-    ///     per-pack internals have never been reverse-engineered in this project
-    ///     or in pixeltris/Lotd - only their chunk-level size is known. Nothing
-    ///     in this app reads or writes them; they're carried through untouched.
+    ///   - Unknown lead-in (16B) and BattlePacks' per-pack internals (3220B,
+    ///     5 packs x 644 bytes) have never been reverse-engineered in this
+    ///     project or in pixeltris/Lotd - only their chunk-level size is
+    ///     known. A before/after diff of an 8-card shop booster purchase
+    ///     touched zero BattlePacks bytes, consistent with that chunk being
+    ///     scoped to the game's separate "Battle Pack" mode rather than
+    ///     regular Card Shop purchases. Nothing in this app reads or writes
+    ///     these regions; they're carried through untouched.
+    ///   - Stats slots 43-99 remain fully unidentified (slot 42,
+    ///     Cards_Won_Campaign, was identified 2026-07-26 - see StatsLayout's
+    ///     doc comment). Campaign's 3 unidentified int32s per duel record and
+    ///     each series' 8-byte Duel0TrailerBytes are also still open (see
+    ///     Campaign sub-fields above) - by byte count, these are the single
+    ///     largest unmapped region in the whole file (~3.6KB across 300 duel
+    ///     slots in 6 series). SlotLayout's deck-slot record also has a
+    ///     handful of small unlabeled gaps (~25 bytes/slot between the
+    ///     Modified timestamp, OwnerId, and Occupied fields) that have never
+    ///     been individually chased.
+    ///   - Steam achievements are NOT gated by anything in this save file.
+    ///     Confirmed 2026-07-26: a player who used the editor to complete all
+    ///     but the last duel of a campaign series, then legitimately won that
+    ///     last duel live, still didn't get the achievement - and separately,
+    ///     Steam shows a native "greyed out" achievement-progress toast on
+    ///     every real win building up to one colored unlock, which is Steam's
+    ///     built-in behavior for achievements gated on a Steamworks client
+    ///     stat (SetStat/StoreStats), not a save-file condition. That stat
+    ///     lives in Steam's own local userstats cache for the account+app,
+    ///     entirely separate from this .dat file, and only advances when the
+    ///     running game calls the Steamworks API on a genuine live win - no
+    ///     byte pattern in the save can retroactively trigger it. Don't
+    ///     re-chase this inside the save format; the practical workaround is
+    ///     Steam Achievement Manager (SAM), which edits that stat/achievement
+    ///     state directly via the same API instead of the save file.
     ///   - CardList's chunk size (to EOF) doesn't equal GetNumCards(v) for
     ///     LinkEvolution (20000 bytes vs 10027 real cards) - this isn't
     ///     unidentified data, it's a padded array capacity (pixeltris/Lotd's
