@@ -1,30 +1,66 @@
-# Changelog
+## Added
 
-All notable changes to this project are documented here.
+### Stats
+- Added a new **Stats** entry: **Cards Won (Campaign)**.
+  - This previously unidentified counter has been reverse-engineered and formally named.
+  - Tracks new card copies awarded as post-duel rewards:
+    - **Loss:** +1 card
+    - **Win:** +3 cards
+    - **Already own maximum copies:** +0 cards
+  - The value is now visible and fully editable in the **Stats** tab.
 
-## 2026-07-26
+### Campaign
+- Completing a campaign duel in the editor now stamps a random **Duel Points** reward value (**1000–1800**) into that duel's internal reward field, matching what the game writes during a genuine completion.
+  - **Experimental:** This field is not used for unlocking or scoring. It simply populates a value that editor-completed duels previously left at `0`.
 
-### Added
-- **New Stats entry: "Cards Won (Campaign)"** — a previously-unidentified counter in the save's Stats chunk has been reverse-engineered and formally named. It tracks new card copies granted as post-duel rewards (1 for a loss, 3 for a win, 0 if you already own the max copies of whatever was rolled). Now visible and editable in the Stats tab like any other stat.
-- Completing a campaign duel now stamps a random Duel Points value (1000–1800) into that duel's own internal reward field, mirroring what a genuine in-game completion writes there. *(Experimental — this doesn't change anything the game reads for unlocking or scoring; it only fills in a field that was previously always left at 0 on editor-completed duels.)*
+### Challenges
+- Added a new **Challenges** tab for unlocking and viewing individual duelist challenges, organized per series like the **Campaign** tab.
 
-### Investigated
-- Root-caused a long-standing report of Steam achievements not unlocking after using the editor to complete campaign duels — even after subsequently finishing the final duel(s) completely legitimately. The relevant achievements are gated by a Steamworks client-side stat that lives entirely outside the save file and only advances on a genuine, live win; no save-file edit (from this or any other tool) can trigger it retroactively. If you want an affected achievement unlocked without replaying, [Steam Achievement Manager](https://gitlab.com/gjankowski/steam-achievement-manager) is the practical route — it edits that stat/achievement state directly through the same Steamworks API the game itself uses.
-- Mapped several previously-unknown save-file fields via careful before/after byte comparison: each campaign duel's last-DP-reward field, and the Campaign chunk's "last played series/duel" bookmark.
-- Catalogued every remaining unmapped region of the save format (a handful of Stats slots, the BattlePacks chunk, three per-duel fields in every Campaign record, and a few small gaps in the deck-slot layout) for future reference.
+### Automatic Unlock Logic
+- Completing all campaign duels (Forward and Reverse) for a character now automatically unlocks:
+  - Their **Avatar**
+  - Their **Duelist Challenge**
+- Unlocking any **Duelist Challenge** now automatically unlocks the **Duelist Challenges** content gate.
 
-## 2026-07-25
-
-### Added
-- **Challenges tab** — unlock and inspect individual duelist challenges, laid out per-series just like the Campaign tab.
-- **Avatars tab reworked** to the same per-series layout as Campaign and Challenges.
-- Tabs reordered alphabetically: Avatars, Campaign, Cards, Challenges, Duel Points, Stats, Unlocks.
-- **Automatic unlock rules:**
-  - Completing all of a character's campaign duels (forward *and* reverse) now automatically unlocks their avatar and their duelist challenge.
-  - Unlocking any duelist challenge automatically unlocks the Duelist Challenges content gate.
-- **Failsafes** preventing manual unlocking of Avatars, Duelist Challenges, and Shop/Battle Packs before their real in-game prerequisites are actually met — you can no longer flip these on ahead of the campaign progress the game would otherwise require.
-- Editing a single campaign duel to anything other than Locked now automatically completes every duel before it in that series, and bumps their Reverse duels from Locked to Available — matching what the real game would require to have reached that duel at all. (The series' very first Reverse duel is exempt, since it's always locked in-game regardless of forward progress.)
+### Campaign Progression
+- Editing a campaign duel to anything other than **Locked** now automatically:
+  - Completes every preceding duel in that series.
+  - Changes their **Reverse** duels from **Locked** to **Available**, matching normal game progression.
+  - **Exception:** The first Reverse duel of each series remains locked, as it does in-game.
 
 ---
 
-*Dates reflect when each change was made during development, not necessarily a packaged release.*
+## Changed
+
+### Interface
+- Reworked the **Avatars** tab to use the same per-series layout as **Campaign** and **Challenges**.
+- Reordered tabs alphabetically:
+  - Avatars
+  - Campaign
+  - Cards
+  - Challenges
+  - Duel Points
+  - Stats
+  - Unlocks
+
+### Validation
+- Added failsafes preventing manual unlocking of:
+  - Avatars
+  - Duelist Challenges
+  - Shop/Battle Packs
+- These can no longer be unlocked before their legitimate in-game campaign prerequisites have been met.
+
+---
+
+## Investigated
+
+### Steam Achievements
+- Investigated and identified the root cause of a long-standing issue where Steam achievements failed to unlock after using the editor to complete campaign duels.
+- The affected achievements depend on a **Steamworks client-side stat** that exists entirely outside the save file and only advances after a genuine in-game victory.
+- Because this stat is not stored in the save, **no save editor can unlock these achievements retroactively**.
+- Users who do not wish to replay the required duels can use **Steam Achievement Manager**, which modifies the same Steamworks achievement/stat data used by the game itself.
+
+### Save Format Research
+- Mapped several previously unknown save-file fields through before/after byte analysis:
+  - Each campaign duel's **last Duel Points reward** field.
+  - The Campaign chunk's **last played series/duel** bookmark.
