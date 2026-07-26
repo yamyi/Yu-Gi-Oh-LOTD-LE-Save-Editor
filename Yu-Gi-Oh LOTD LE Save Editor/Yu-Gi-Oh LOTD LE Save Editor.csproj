@@ -9,7 +9,7 @@
     <UseWPF>true</UseWPF>
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationIcon>favicon.ico</ApplicationIcon>
-    <Version>1.0.1</Version>
+    <Version>1.0.2</Version>
 
     <!-- One exe, no loose .dll/.pdb sitting next to it in the publish
          folder. Framework-dependent (no SelfContained/RuntimeIdentifier
