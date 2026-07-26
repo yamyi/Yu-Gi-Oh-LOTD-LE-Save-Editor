@@ -131,12 +131,15 @@ The Save Editor exposes nearly every editable portion of the save file.
 
 | Section | Description |
 |---------|-------------|
+| 👤 Avatars | Unlock duelist avatars, browsable per-series with automatic unlock once a duelist's full campaign (forward + reverse) is complete |
+| 🏆 Campaign | Toggle completion of campaign duels and reverse duels, per series |
+| 🎖️ Challenges | Unlock and inspect individual Duelist Challenges, browsable per-series, with the same automatic-unlock rule as Avatars |
 | 💰 Duel Points | Edit total Duel Points |
-| 🏆 Campaign | Toggle completion of campaign duels |
-| 📦 Unlocks | Unlock Shop Packs, Battle Packs and Tutorials |
-| 👤 Avatars | Unlock duelist avatars |
 | 📈 Statistics | Edit lifetime game statistics |
+| 📦 Unlocks | Unlock Shop Packs, Battle Packs and Tutorials |
 | 🃏 Card Collection | Edit owned cards and copy counts |
+
+Avatars, Challenges, and Shop/Battle Pack unlocks all include failsafes that block manually unlocking something before its real in-game prerequisite is actually met, so the editor can't be used to reach an impossible in-game state.
 
 ### Card Collection Features
 
@@ -301,7 +304,25 @@ Modify campaign progress, Duel Points, unlocks, avatars, statistics, and the com
 
 # Getting Started
 
-## Requirements
+## Download (Recommended)
+
+Grab the latest prebuilt `.exe` from the [Releases](../../releases) page — no build tools or .NET SDK required. Just download and run it; see [Requirements to Run](#requirements-to-run) below for what needs to already be on your machine.
+
+Prefer to build it yourself, or want to modify the source? See [Building From Source](#building-from-source) below.
+
+---
+
+## Requirements to Run
+
+The prebuilt `.exe` is framework-dependent, so your machine needs the **.NET 8 Desktop Runtime** installed (not the full SDK):
+
+https://dotnet.microsoft.com/download/dotnet/8.0
+
+No other installation or setup is required — everything else the editor needs is embedded in the executable itself.
+
+---
+
+## Building From Source
 
 Before building the project, ensure you have:
 
@@ -652,9 +673,10 @@ The card database maps Link Evolution's internal card IDs to the richer YGOPRODe
 
 Although the editor supports nearly every aspect of the save format, a few limitations remain.
 
-- No installer is currently provided. The project must be run from source or from a self-built binary.
+- No installer is provided, only a portable `.exe` attached to each [Release](../../releases) — there's no Start Menu shortcut, uninstaller entry, or auto-update check.
 - Deck legality uses the bundled **Link Evolution** banlist only. There is currently no option to validate against alternate TCG or OCG formats.
-- Building the project requires Windows with the **.NET 8 SDK** and the WPF workload (`Microsoft.NET.Sdk` + `UseWPF`).
+- Building the project from source requires Windows with the **.NET 8 SDK** and the WPF workload (`Microsoft.NET.Sdk` + `UseWPF`) — not required if you're just running the prebuilt `.exe`.
+- Steam achievements gated on lifetime win counts (e.g. completing a full campaign series) can't be triggered by editing the save file, even if every duel is set to Complete. Those achievements are tracked by a Steamworks client-side stat that only advances on a genuine live win in-game — the save file has no influence over it. [Steam Achievement Manager](https://gitlab.com/gjankowski/steam-achievement-manager) is the practical workaround if you want an already-earned-in-spirit achievement unlocked without replaying.
 
 ---
 
