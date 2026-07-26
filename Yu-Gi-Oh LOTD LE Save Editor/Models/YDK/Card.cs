@@ -87,9 +87,8 @@ namespace YuGiOhSaveEditor.Services
         // Which of the game's own booster packs sell this card and at what
         // pack-local rarity (Common/Rare - this shop has no other tiers).
         // A card can be sold in more than one pack, hence a list rather than
-        // a single field. Added 2026-07-24 from a fan-compiled Card Shop
-        // list; null/empty means the card wasn't found in that source (either
-        // it isn't shop-obtainable, or the source had no clean match for it).
+        // a single field. Null/empty means the card wasn't found in the
+        // source data (either it isn't shop-obtainable, or no clean match).
         [JsonPropertyName("shop_packs")]
         public List<ShopPackEntry>? ShopPacks { get; init; }
 
@@ -97,9 +96,8 @@ namespace YuGiOhSaveEditor.Services
         // Which duelists' dedicated "- Challenge" decklist (as opposed to their
         // regular campaign-episode decks) contains this card - winning or losing
         // that duel awards copies of it. A card can appear in more than one
-        // duelist's Challenge deck, hence a list. Added 2026-07-24 from a
-        // fan-compiled Character Deck List guide; null/empty means the card
-        // wasn't found in any "- Challenge" decklist in that source.
+        // duelist's Challenge deck, hence a list. Null/empty means the card
+        // wasn't found in any "- Challenge" decklist in the source data.
         [JsonPropertyName("duelist_challenges")]
         public List<string>? DuelistChallenges { get; init; }
 

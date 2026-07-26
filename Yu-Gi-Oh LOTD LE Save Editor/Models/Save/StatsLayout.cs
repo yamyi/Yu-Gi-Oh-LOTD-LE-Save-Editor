@@ -1,50 +1,16 @@
 namespace YuGiOhSaveEditor.Services
 {
     /// <summary>
-    /// The 43 known campaign/duel counters tracked in the Stats chunk (see
-    /// SaveLayout's whole-file map — fixed at LotdSaveFormat.StatsOffset,
-    /// 0x24/36, in both save formats). Indices 0-41 ported verbatim from
-    /// pixeltris/Lotd's StatSaveType enum (Lotd/SaveData/StatSaveData.cs),
-    /// which the user's own WinForms reference tool (Arefu/Wolf's
-    /// Elroy.SaveStatManager) matches member-for-member and in the same
-    /// order — that ordering is exactly the on-disk slot order, so StatType's
-    /// integer value IS the stat's index in the chunk (0-based).
+    /// The 43 known campaign/duel counters in the Stats chunk (fixed at
+    /// LotdSaveFormat.StatsOffset, 0x24/36). Indices 0-41 ported from
+    /// pixeltris/Lotd's StatSaveType enum, exactly matching on-disk slot
+    /// order. The chunk reserves 100 slots total (LotdSaveFormat.GetNumStats);
+    /// slots 43-99 have no known meaning and are left untouched.
     ///
-    /// pixeltris' enum has one further "Unknown" 43rd member after
-    /// Decks_Created ("There seems to be one additional value. Is this
-    /// actually part of the stat data or something separate?"). This project
-    /// has since identified it (see Cards_Won_Campaign below) and formally
-    /// named it, unlike Elroy's tool which stops at Decks_Created.
-    ///
-    /// LinkEvolution reserves 100 stat slots total (LotdSaveFormat.GetNumStats),
-    /// not just 43 — the same "wider on-disk capacity than known fields" pattern
-    /// already seen in CardCollectionLayout (GetNumCardSlots vs GetNumCards).
-    /// Slots 43-99 have no known real-world meaning (presumably newer counters
-    /// added for Link Evolution's expanded content) and are intentionally left
-    /// untouched: StatType/GetKnownStats only expose indices 0-42, and nothing
-    /// in this class ever bulk-writes across the full GetNumStats(v) range.
-    ///
-    /// Cards_Won_Campaign (index 42, right after Decks_Created) - identified
-    /// 2026-07-26 via a series of before/after save diffs: it's a count of new
-    /// card copies actually granted as a post-duel reward, not a win/score
-    /// counter. Per the game's own reward rule a loss normally grants 1
-    /// random card and a win grants 3, but nothing is granted for any card
-    /// the player already owns the max copies of - confirmed by two
-    /// independent loss diffs that left it completely flat (99→99, 105→105,
-    /// both with zero CardList bytes touched - the rolled cards were already
-    /// maxed) and one win diff that showed +3 (99→102) alongside exactly 3
-    /// CardList bytes flipping from 0 to owned. Also confirmed scoped to
-    /// duel rewards specifically, not "any new card obtained": an 8-card shop
-    /// booster purchase (-200 Duel Points, 8 CardList bytes touched, 7 of
-    /// them brand new) left it completely flat. All of this testing was done
-    /// exclusively on Yu-Gi-Oh! campaign duels, forward mode - whether
-    /// Challenge or Multiplayer wins/losses also move this same slot is
-    /// unconfirmed, hence the "_Campaign" in its name; treat that scope as a
-    /// working assumption, not a proven fact. Like Decks_Created, it's a
-    /// lifetime running total with no way to recompute it from current save
-    /// state, so it's intentionally untouched by every Recalculate* method
-    /// here - editable directly via the Stats tab same as any other stat, but
-    /// nothing in this app derives or resets its value automatically.
+    /// Cards_Won_Campaign (index 42) is new card copies granted as a
+    /// post-duel reward (1 per loss, 3 per win, 0 if already at max copies),
+    /// not a win/score counter - a lifetime total, intentionally untouched
+    /// by every Recalculate* method here.
     /// </summary>
     public enum StatType
     {
@@ -54,8 +20,15 @@ namespace YuGiOhSaveEditor.Services
         Games_Challenge = 3,
         Games_Multiplayer = 4,
         Games_Multiplayer_1V1 = 5,
+
+        /// <summary>Tag Duel isn't reachable through the shipped Multiplayer
+        /// UI (requires a third-party duel-starter tool). Should always read
+        /// 0 in a normally-played save.</summary>
         Games_Multiplayer_Tag = 6,
         Games_Multiplayer_Ranked = 7,
+
+        /// <summary>Named "Friendly" in pixeltris/Lotd; the game calls it
+        /// "Player Match" (see GetLabel).</summary>
         Games_Multiplayer_Friendly = 8,
         Games_Multiplayer_Battlepack_Any = 9,
         Games_Multiplayer_Battlepack_1 = 10,
@@ -67,6 +40,8 @@ namespace YuGiOhSaveEditor.Services
         Wins_Challenge = 16,
         Wins_Multiplayer = 17,
         Wins_Multiplayer_1V1 = 18,
+
+        /// <summary>See Games_Multiplayer_Tag - same slot, win side.</summary>
         Wins_Multiplayer_Tag = 19,
         Wins_Multiplayer_Ranked = 20,
         Wins_Multiplayer_Friendly = 21,
@@ -91,35 +66,23 @@ namespace YuGiOhSaveEditor.Services
         Chains = 40,
         Decks_Created = 41,
 
-        /// <summary>Count of new card copies granted as post-duel rewards
-        /// (1 per loss, 3 per win, 0 for any card already owned at max copies)
-        /// - see this enum's doc comment for the full identification writeup.
-        /// Confirmed scoped to Campaign duels specifically; Challenge/
-        /// Multiplayer scope is unconfirmed.</summary>
+        /// <summary>Count of new card copies granted as post-duel Campaign
+        /// rewards (1 per loss, 3 per win, 0 if already at max copies).</summary>
         Cards_Won_Campaign = 42,
     }
 
     /// <summary>
     /// Reads/writes the Stats save chunk directly against the raw save byte[].
-    /// Each slot is 8 bytes (int64), base offset LotdSaveFormat.StatsOffset —
-    /// confirmed twice over: once via SaveLayout/LotdSaveFormat's own
-    /// GetStatsSize(v)/GetNumStats(v) math (800/100 and 344/43 both divide out
-    /// to 8 bytes/stat), and again by the user's pasted Elroy.SaveStatManager
-    /// code, which reads each stat as ReadBytes(8) at a running position that
-    /// starts at absolute offset 0x24 (=36=StatsOffset) and writes back with
-    /// BitConverter.GetBytes((long)value) — genuinely an 8-byte/int64 field on
-    /// disk, even though Elroy's own UI only surfaces the low 4 bytes of it
-    /// (BitConverter.ToInt32 on the same 8-byte read) into a NumericUpDown.
-    /// This class uses long end-to-end instead, so stat values beyond int32
-    /// range round-trip correctly.
+    /// Each slot is 8 bytes (int64), base offset LotdSaveFormat.StatsOffset.
+    /// This class uses long end-to-end, so stat values beyond int32 range
+    /// round-trip correctly.
     /// </summary>
     public static class StatsLayout
     {
         public const int EntryBytes = SaveLayout.StatEntryBytes; // 8
 
-        /// <summary>Number of stats with a known name/meaning (see StatType) —
-        /// NOT the same as GetNumStats(v) (43/100 on-disk slots). See this
-        /// class's doc comment for why the gap is left alone.</summary>
+        /// <summary>Number of named stats (43) - not the same as
+        /// GetNumStats(v) (100 on-disk slots).</summary>
         public static int NumKnownStats => Enum.GetValues<StatType>().Length; // 43
 
         public static int GetOffset(LotdSaveVersion v, int index) =>
@@ -145,31 +108,12 @@ namespace YuGiOhSaveEditor.Services
 
         public static void Set(byte[] save, LotdSaveVersion v, StatType stat, long value) => Set(save, v, (int)stat, value);
 
-        /// <summary>
-        /// Recomputes the 6 campaign counters (Games_Campaign[_Normal/_Reverse],
-        /// Wins_Campaign[_Normal/_Reverse]) from scratch by scanning every real
-        /// duel slot in CampaignSaveLayout, rather than incrementing them.
-        ///
-        /// CampaignSaveLayout (raw per-duel state) and this Stats chunk are
-        /// completely separate structures on disk - nothing keeps them in sync
-        /// automatically. Editing duel states directly (single dropdown or the
-        /// bulk series/all buttons) used to leave the two arbitrarily out of
-        /// step, e.g. an entire series flagged Complete while the lifetime
-        /// counters here still read 0. That mismatch is the leading suspect for
-        /// saves getting stuck on the post-duel results screen after a manually
-        /// edited campaign duel is actually played and won.
-        ///
-        /// Call this after every campaign duel-state write so the two chunks
-        /// can never drift apart again. Only real duel slots (per
-        /// CampaignSaveLayout.KnownRealDuelRange) are counted - the unused
-        /// padding slots that bulk actions also happen to touch are ignored,
-        /// same as the Campaign tab's own display filtering.
-        ///
-        /// AvailableAttempted counts toward Games but not Wins (attempted, not
-        /// yet beaten); Complete counts toward both; Locked/Available/
-        /// AvailableAlt count toward neither - matching LotdCampaignDuelState's
-        /// own doc comments on what each state means in-game.
-        /// </summary>
+        /// <summary>Recomputes the 6 campaign counters from scratch by
+        /// scanning every real duel slot in CampaignSaveLayout, so this
+        /// chunk can never drift. Call after every campaign duel-state
+        /// write. AvailableAttempted counts toward Games only; Complete
+        /// counts toward both; Locked/Available/AvailableAlt count toward
+        /// neither.</summary>
         public static void RecalculateCampaignStats(byte[] save, LotdSaveVersion v)
         {
             long forwardGames = 0, forwardWins = 0, reverseGames = 0, reverseWins = 0;
@@ -210,22 +154,10 @@ namespace YuGiOhSaveEditor.Services
             RecalculateNonmatchWins(save, v);
         }
 
-        /// <summary>
-        /// Recomputes Games_Challenge/Wins_Challenge from scratch by scanning
-        /// every duelist-challenge slot (MiscSaveLayout's Challenges array, one
-        /// DeulistChallengeState per deck-data slot) - same
-        /// recompute-not-increment approach as RecalculateCampaignStats, and
-        /// for the same reason: the bulk Unlock/Complete/Reset Challenges
-        /// buttons only ever wrote MiscSaveLayout.SetAllChallenges, never
-        /// touching this Stats chunk. Failed counts toward Games only
-        /// (attempted, not won); Complete counts toward both; Locked/Available
-        /// count toward neither.
-        ///
-        /// Call this after any challenge-state write (currently only the bulk
-        /// Unlock/Complete/Reset Challenges buttons - there's no per-challenge
-        /// editor yet) so Games_Challenge/Wins_Challenge - and, transitively,
-        /// Wins_Nonmatch - never drift from the actual challenge states.
-        /// </summary>
+        /// <summary>Recomputes Games_Challenge/Wins_Challenge by scanning
+        /// every duelist-challenge slot. Failed counts toward Games only;
+        /// Complete counts toward both. Call after any challenge-state
+        /// write.</summary>
         public static void RecalculateChallengeStats(byte[] save, LotdSaveVersion v)
         {
             long games = 0, wins = 0;
@@ -244,15 +176,10 @@ namespace YuGiOhSaveEditor.Services
             RecalculateNonmatchWins(save, v);
         }
 
-        /// <summary>
-        /// Wins_Nonmatch is defined as Campaign wins + Challenge wins combined
-        /// (i.e. every non-match win - as opposed to Wins_Match, which is
-        /// specifically best-of-three). Recomputed from whichever of
-        /// Wins_Campaign/Wins_Challenge is currently on disk rather than
-        /// incremented directly, so it's called from both
-        /// RecalculateCampaignStats and RecalculateChallengeStats and can
-        /// never end up out of step with either one.
-        /// </summary>
+        /// <summary>Wins_Nonmatch = Campaign wins + Challenge wins (every
+        /// non-match win, vs. Wins_Match's best-of-three). Recomputed from
+        /// current disk values, called from both RecalculateCampaignStats
+        /// and RecalculateChallengeStats.</summary>
         public static void RecalculateNonmatchWins(byte[] save, LotdSaveVersion v)
         {
             long campaignWins = Get(save, v, StatType.Wins_Campaign);
@@ -262,29 +189,12 @@ namespace YuGiOhSaveEditor.Services
         }
 
         /// <summary>
-        /// Keeps the 3 real Battle Packs' unlock flags (plus the general
-        /// "Battle Pack" content gate) in sync with Wins_Nonmatch, per the
-        /// user's own milestone thresholds (2026-07-25):
-        ///   - Wins_Nonmatch >= 5:  unlock the Battle Pack content gate
-        ///     (UnlockedContent.BattlePack) AND Epic Dawn (UnlockedShopPacks.
-        ///     EpicDawn - its real flag lives in ShopPacks despite being a
-        ///     "Battle Pack" in-game, see that enum's doc comment).
-        ///   - Wins_Nonmatch >= 10: unlock War of the Giants
-        ///     (UnlockedBattlePacks.WarOfTheGiants).
-        ///   - Wins_Nonmatch >= 20: unlock War of the Giants Round 2
-        ///     (UnlockedBattlePacks.WarOfTheGiantsRound2).
-        /// Unlock AND relock: each flag is set to exactly match its threshold
-        /// every time, so a Wins_Nonmatch drop below a threshold (e.g. via
-        /// Campaign/Challenge state edits recomputing it lower) re-locks that
-        /// content again - same unlock-and-relock behavior requested for the
-        /// original per-pack version of this, just re-keyed off Wins_Nonmatch.
-        ///
-        /// Called automatically from RecalculateNonmatchWins (itself called
-        /// by RecalculateCampaignStats/RecalculateChallengeStats), and
-        /// directly from SaveEditorView.StatValue_LostFocus when the user
-        /// edits the Wins_Nonmatch row by hand - so this can never drift from
-        /// whatever Wins_Nonmatch currently reads, regardless of how it got
-        /// there.
+        /// Keeps the 3 real Battle Packs' unlock flags in sync with
+        /// Wins_Nonmatch: >=5 unlocks the BattlePack gate + Epic Dawn, >=10
+        /// War of the Giants, >=20 War of the Giants Round 2. Unlocks AND
+        /// relocks each time, so a drop below a threshold re-locks that
+        /// content. Called from RecalculateNonmatchWins and directly from
+        /// SaveEditorView.StatValue_LostFocus.
         /// </summary>
         public static void SyncBattlePackUnlocksFromNonmatchWins(byte[] save, LotdSaveVersion v)
         {
@@ -304,13 +214,10 @@ namespace YuGiOhSaveEditor.Services
             MiscSaveLayout.SetBattlePacksFlag(save, v, battlePacks);
         }
 
-        /// <summary>Adds <paramref name="by"/> (default 1) to a stat's current
-        /// value, for the handful of counters - currently just Decks_Created -
-        /// that track a lifetime running total rather than something
-        /// recomputable from the save's current state (a cleared/overwritten
-        /// slot doesn't erase the fact that a deck was created there at some
-        /// point). Unlike the Recalculate* methods above, this reads-then-adds,
-        /// so callers must only invoke it exactly once per real occurrence.</summary>
+        /// <summary>Adds <paramref name="by"/> (default 1) to a stat's
+        /// current value - for lifetime-running-total counters (currently
+        /// just Decks_Created) that can't be recomputed from save state.
+        /// Reads-then-adds, so call exactly once per real occurrence.</summary>
         public static void Increment(byte[] save, LotdSaveVersion v, StatType stat, long by = 1) =>
             Set(save, v, stat, Get(save, v, stat) + by);
 
@@ -325,7 +232,7 @@ namespace YuGiOhSaveEditor.Services
             StatType.Games_Multiplayer_1V1 => "Multiplayer Games (1v1)",
             StatType.Games_Multiplayer_Tag => "Multiplayer Games (Tag)",
             StatType.Games_Multiplayer_Ranked => "Multiplayer Games (Ranked)",
-            StatType.Games_Multiplayer_Friendly => "Multiplayer Games (Friendly)",
+            StatType.Games_Multiplayer_Friendly => "Multiplayer Games (Player Match)",
             StatType.Games_Multiplayer_Battlepack_Any => "Multiplayer Games (Any Battle Pack)",
             StatType.Games_Multiplayer_Battlepack_1 => "Multiplayer Games (Battle Pack 1)",
             StatType.Games_Multiplayer_Battlepack_2 => "Multiplayer Games (Battle Pack 2)",
@@ -338,7 +245,7 @@ namespace YuGiOhSaveEditor.Services
             StatType.Wins_Multiplayer_1V1 => "Multiplayer Wins (1v1)",
             StatType.Wins_Multiplayer_Tag => "Multiplayer Wins (Tag)",
             StatType.Wins_Multiplayer_Ranked => "Multiplayer Wins (Ranked)",
-            StatType.Wins_Multiplayer_Friendly => "Multiplayer Wins (Friendly)",
+            StatType.Wins_Multiplayer_Friendly => "Multiplayer Wins (Player Match)",
             StatType.Wins_Multiplayer_Battlepack_Any => "Multiplayer Wins (Any Battle Pack)",
             StatType.Wins_Multiplayer_Battlepack_1 => "Multiplayer Wins (Battle Pack 1)",
             StatType.Wins_Multiplayer_Battlepack_2 => "Multiplayer Wins (Battle Pack 2)",

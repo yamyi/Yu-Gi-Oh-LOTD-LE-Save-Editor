@@ -464,10 +464,7 @@ public partial class SaveEditorView : UserControl
     /// ShopPacks (see UnlockedBattlePacks' doc comment). Each entry's Kind
     /// doubles as its CheckableItem.Kind so CheckableItem_Changed and
     /// BulkShopPacks can look up the right flag generically instead of one
-    /// hardcoded case per duelist. All 4 are CONFIRMED (BlueAngel via a real
-    /// before/after save diff, Soulburner/Varis/Ai via live in-game testing
-    /// after being wired up as a numbering hypothesis - see the enum's doc
-    /// comment).</summary>
+    /// hardcoded case per duelist.</summary>
     private static readonly (UnlockedBattlePacks Flag, string Kind, string Label)[] BattlePackShopEntries =
     {
         (UnlockedBattlePacks.BlueAngel, "BlueAngel", "Blue Angel"),
@@ -506,8 +503,7 @@ public partial class SaveEditorView : UserControl
 
             var shop = (uint)MiscSaveLayout.GetShopPacks(Bytes!, Version);
             // Epic Dawn's real flag lives in ShopPacks (bit 31), not
-            // BattlePacksFlag - confirmed via a real before/after save diff,
-            // see UnlockedShopPacks' doc comment.
+            // BattlePacksFlag - see UnlockedShopPacks' doc comment.
             BpEpicDawnCheck.IsChecked = (shop & (uint)UnlockedShopPacks.EpicDawn) != 0;
             for (int i = 0; i < ShopPackLabels.Length; i++)
             {
@@ -516,10 +512,8 @@ public partial class SaveEditorView : UserControl
                 ShopPackItems.Add(new CheckableItem(entry.Label, i, "ShopPack", isChecked));
             }
             // Blue Angel/Soulburner/Varis/Ai are sold as normal duelist shop
-            // packs in-game, but their real flags live in BattlePacksFlag, not
-            // ShopPacks - see BattlePackShopEntries' doc comment (Blue Angel
-            // confirmed, the other 3 an unconfirmed labeled-experimental
-            // hypothesis).
+            // packs in-game, but their real flags live in BattlePacksFlag,
+            // not ShopPacks - see BattlePackShopEntries' doc comment.
             foreach (var entry in BattlePackShopEntries)
                 ShopPackItems.Add(new CheckableItem(entry.Label, 0, entry.Kind, (bp & entry.Flag) != 0));
 
@@ -544,13 +538,11 @@ public partial class SaveEditorView : UserControl
 
     /// <summary>Covers both fields the Shop Packs list actually touches:
     /// ShopPacks for the normal per-duelist bits (plus Epic Dawn, bit 31),
-    /// and BattlePacksFlag's 4 BattlePackShopEntries bits (Blue Angel
-    /// confirmed, Soulburner/Varis/Ai an unconfirmed hypothesis - see that
-    /// array's doc comment) - all 4 are listed here alongside the other shop
-    /// duelists since that's where players expect them, even though their
-    /// real flags live elsewhere. WarOfTheGiants/WarOfTheGiantsRound2 aren't
-    /// touched here - those stay under the Battle Packs section's own bulk
-    /// buttons.</summary>
+    /// and BattlePacksFlag's 4 BattlePackShopEntries bits - all 4 are listed
+    /// here alongside the other shop duelists since that's where players
+    /// expect them, even though their real flags live elsewhere.
+    /// WarOfTheGiants/WarOfTheGiantsRound2 aren't touched here - those stay
+    /// under the Battle Packs section's own bulk buttons.</summary>
     private void BulkShopPacks(bool unlock)
     {
         if (!HasSave) return;
@@ -611,14 +603,11 @@ public partial class SaveEditorView : UserControl
     private void ClearAllBattlePacks_Click(object sender, RoutedEventArgs e) => BulkBattlePacks(unlock: false);
 
     /// <summary>Sets both fields that back the 3 Battle Pack checkboxes:
-    /// BattlePacksFlag's exact 0x3F/0x00 pattern (confirmed against a real
-    /// fully-unlocked save - see UnlockedBattlePacks' doc comment; bits 3-5's
-    /// individual meaning isn't confirmed but they're demonstrably part of a
-    /// real "everything unlocked" save) PLUS ShopPacks' EpicDawn bit (its real
-    /// location, confirmed via a real before/after diff - see
-    /// UnlockedShopPacks' doc comment). The 3 checkboxes below only ever
-    /// touch their own single bit each, so this button is the only way to
-    /// reach that exact real-save state in one step.</summary>
+    /// BattlePacksFlag's exact 0x3F/0x00 pattern (see UnlockedBattlePacks'
+    /// doc comment) plus ShopPacks' EpicDawn bit (see UnlockedShopPacks' doc
+    /// comment). The 3 checkboxes below only ever touch their own single bit
+    /// each, so this button is the only way to reach that exact real-save
+    /// state in one step.</summary>
     private void BulkBattlePacks(bool unlock)
     {
         if (!HasSave) return;
@@ -632,8 +621,8 @@ public partial class SaveEditorView : UserControl
 
     /// <summary>Epic Dawn is a special case: its checkbox is visually grouped
     /// with the other 2 Battle Packs, but its real flag lives in ShopPacks
-    /// (bit 31), not BattlePacksFlag - see UnlockedShopPacks' doc comment for
-    /// the before/after save diff that proved this.</summary>
+    /// (bit 31), not BattlePacksFlag - see UnlockedShopPacks' doc
+    /// comment.</summary>
     private void BattlePackFlag_Changed(object sender, RoutedEventArgs e)
     {
         if (_suppressEvents || !HasSave) return;
@@ -664,12 +653,10 @@ public partial class SaveEditorView : UserControl
     /// BattlePacksFlag by way of BattlePackShopEntries for the 4 shop
     /// duelists whose real flag lives there instead).
     ///
-    /// Failsafe (2026-07-25): checking a box ON is refused (reverted, no
-    /// write, no undo snapshot) unless CanManuallyUnlockCheckableItem says
-    /// its real Campaign prerequisite is already satisfied - "if a duelist
-    /// does not have all his duels completed, you can not unlock the avatar
-    /// ... and if the duel that unlocks a pack shop is not complete then it
-    /// can not be unlocked either." Unchecking (locking) is never refused.</summary>
+    /// Failsafe: checking a box ON is refused (reverted, no write, no undo
+    /// snapshot) unless CanManuallyUnlockCheckableItem says its real
+    /// Campaign prerequisite is already satisfied. Unchecking (locking) is
+    /// never refused.</summary>
     private void CheckableItem_Changed(object sender, RoutedEventArgs e)
     {
         if (_suppressEvents || !HasSave) return;
@@ -1018,13 +1005,8 @@ public partial class SaveEditorView : UserControl
                 : null;
             if (currentSeries is null) return;
 
-            // Slots at/beyond this save version's real Challenges-array size
-            // don't exist on disk for this format (e.g. every VRAINS-era entry
-            // for the older 2016 "Lotd" format, which has no VRAINS content at
-            // all) - writing to one would land on unrelated bytes (UnlockedRecipes,
-            // shop/battle pack flags, ...) instead of silently no-oping, so they're
-            // filtered out here rather than left for MiscSaveLayout's bounds check
-            // to catch.
+            // Slots at/beyond the real Challenges-array size are filtered out
+            // here rather than left for MiscSaveLayout's bounds check to catch.
             int numSlots = LotdSaveFormat.GetNumDeckDataSlots(Version);
             var visible = DuelistChallengeSlots.Entries
                 .Where(entry => entry.SlotIndex < numSlots && DuelistChallengeSlots.GetSeries(entry.CharacterId) == currentSeries.Value)
@@ -1078,13 +1060,12 @@ public partial class SaveEditorView : UserControl
     /// unlocking a single named challenge here can never leave those derived
     /// values out of step with what this tab now shows.
     ///
-    /// Failsafe (2026-07-25): the specific Locked -> anything-else transition
-    /// is refused (reverted, no write, no undo snapshot) unless
+    /// Failsafe: the specific Locked -> anything-else transition is refused
+    /// (reverted, no write, no undo snapshot) unless
     /// MiscSaveLayout.CanManuallyUnlock says this duelist's Campaign duels
-    /// are all Complete - "if a duelist does not have all his duels
-    /// completed, you can not unlock ... the challenge for it." Moving
-    /// between two already-unlocked states (e.g. Available -> Complete) or
-    /// back to Locked is never refused - only the initial unlock is gated.</summary>
+    /// are all Complete. Moving between two already-unlocked states (e.g.
+    /// Available -> Complete) or back to Locked is never refused - only the
+    /// initial unlock is gated.</summary>
     private void ChallengeState_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_suppressEvents || !HasSave) return;
@@ -1134,11 +1115,10 @@ public partial class SaveEditorView : UserControl
         }
 
         // Real cards are scattered throughout the full CardList chunk, not
-        // clustered in a 0..GetNumCards-1 prefix (confirmed via a real save
-        // with every real card owned - owned slots ran from index ~4007 to
-        // ~14964). So the owned tally has to scan the full GetNumCardSlots
-        // range; GetNumCards is used only as the display denominator (the
-        // known real-card total), not as a scan bound.
+        // clustered in a 0..GetNumCards-1 prefix, so the owned tally has to
+        // scan the full GetNumCardSlots range; GetNumCards is used only as
+        // the display denominator (the known real-card total), not as a
+        // scan bound.
         int total = CardCollectionLayout.GetNumCards(Version);
         int slots = CardCollectionLayout.GetNumCardSlots(Version);
         int owned = 0;
@@ -1153,8 +1133,8 @@ public partial class SaveEditorView : UserControl
         // Second figure alongside the slot count: total individual copies
         // owned (a card counts up to 3 toward this), out of the maximum
         // possible if every one of the `total` real cards were owned at the
-        // 3-copy cap - added 2026-07-24 per user request for a "copies"
-        // tally distinct from the existing "at least 1 copy" slot tally.
+        // 3-copy cap - a "copies" tally distinct from the "at least 1 copy"
+        // slot tally.
         int maxCopies = total * CardCollectionLayout.MaxCountPerCard;
         CardsSummaryText.Text =
             $"{owned:N0} / {total:N0} card slots have at least 1 copy owned   •   {copies:N0} / {maxCopies:N0} total copies owned";
@@ -1164,8 +1144,7 @@ public partial class SaveEditorView : UserControl
     /// <summary>Per-card unlock: searches AppContext.CardDb by name (same
     /// database CardSearchView browses) and shows a compact results list
     /// with each match's live owned count. LotdId is the byte index
-    /// CardCollectionLayout.GetCount/SetCount actually take - confirmed
-    /// 2026-07-23 to be the real save-slot index (see
+    /// CardCollectionLayout.GetCount/SetCount actually take (see
     /// CardSearchResultViewModel's doc comment) - so only entries with a
     /// LotdId are searchable here; nameless/unmapped cards can't be targeted
     /// this way. Selecting a result (ListBox SelectionChanged) reveals
@@ -1257,8 +1236,8 @@ public partial class SaveEditorView : UserControl
     /// <summary>Unlocks only the real ~10027 cards Cards.json knows about
     /// (AppContext.CardDb.AllLotdIds()), not the full ~20000-slot chunk -
     /// CardCollectionLayout.UnlockAllCards touches every padding slot too,
-    /// which used to make the Cards tab's counter read "20000/10027" after
-    /// unlocking (bug reported/fixed 2026-07-23).</summary>
+    /// which would inflate the Cards tab's counter past the real card
+    /// total.</summary>
     private void UnlockAllCards_Click(object sender, RoutedEventArgs e)
     {
         if (!HasSave) return;

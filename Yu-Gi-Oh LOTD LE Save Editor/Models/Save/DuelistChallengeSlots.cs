@@ -1,50 +1,21 @@
 namespace YuGiOhSaveEditor.Services
 {
-    /// <summary>
-    /// Maps each real duelist's Challenge Deck ID (chardata_X.bin's own field of
-    /// that name) to its slot index in MiscSaveLayout's Challenges/UnlockedRecipes
-    /// arrays - the missing link needed to unlock/complete a single named
-    /// duelist's challenge, rather than only the existing bulk
-    /// Unlock/Complete/Reset-everything buttons.
-    ///
-    /// Source: the user extracted chardata_X.bin from their own Link Evolution
-    /// install and read it with nzxth2's YGO_LOTD_LE_CharData_Editor
-    /// (https://github.com/nzxth2/YGO_LOTD_LE_CharData_Editor), which decodes
-    /// each character's Challenge Deck ID field directly - not a guess or a
-    /// derived value. Supplied 2026-07-25 as a 191-row CharacterID/Name/
-    /// ChallengeDeckID dump; entries whose ChallengeDeckID read back as
-    /// 4294967295 (0xFFFFFFFF, i.e. -1 as uint32) mean "this character has no
-    /// challenge deck" (cameos, alternate forms, NPCs with no playable
-    /// Duelist Challenge) and are excluded here. That leaves exactly 158 real
-    /// entries - matching the user's own independent recollection of "158
-    /// duelist challenges" before this data ever came in, which is the
-    /// strongest confirmation available that the filtering is correct.
-    ///
-    /// CharacterId here is pixeltris/Lotd's chardata.bin character id space -
-    /// confirmed identical to OwnerDatabase's byte keys by cross-checking all
-    /// 158 names against OwnerDatabase.GetName (0 mismatches, 0 missing), so
-    /// OwnerDatabase/OwnerPortraitConverter can be reused directly for this
-    /// tab's labels and portraits instead of duplicating name strings here.
-    /// A few names repeat across two different-era appearances of the same
-    /// character (e.g. Alexis Rhodes ids 37 and 107, Crow Hogan ids 10 and 42,
-    /// Jack Atlas ids 16 and 50, Kite Tenjo ids 52 and 156, Aster Phoenix ids
-    /// 38 and 109, The Gore ids 141 and 184, Varis ids 189 and 190) - each is
-    /// still a distinct real challenge with its own slot, just sharing a
-    /// display name; the UI disambiguates by appending the CharacterId.
-    /// </summary>
+    /// <summary>Maps each real duelist's Challenge Deck ID to its slot index
+    /// in MiscSaveLayout's Challenges/UnlockedRecipes arrays, enabling
+    /// per-duelist unlock/complete. 158 real entries. CharacterId matches
+    /// OwnerDatabase's byte keys, so OwnerDatabase/OwnerPortraitConverter
+    /// cover this tab's labels/portraits. A few names repeat across two
+    /// appearances of the same character (e.g. Alexis Rhodes ids 37 and
+    /// 107); the UI disambiguates by appending the CharacterId.</summary>
     public static class DuelistChallengeSlots
     {
         /// <summary>Which duel series a CharacterId belongs to, so the
         /// Challenges tab can group/filter the same way the Campaign tab
         /// does. Derived from chardata.bin's own character ordering - ids
-        /// are laid out in contiguous per-series blocks (confirmed against
-        /// MoonlitDeath's Character &amp; Arena ID wiki page, and cross-checked
-        /// against every name in Entries below: block boundaries land
-        /// exactly on the first/last real character of each series, e.g. id
-        /// 36 "Zone" is 5D's last and id 37 "Alexis Rhodes" is ARC-V's
-        /// first). VRAINS is split into two blocks (138-143, then 177-191)
-        /// because ZEXAL's block (144-176) was inserted between them in
-        /// chardata.bin - both halves map to YuGiOhVRAINS here.</summary>
+        /// are laid out in contiguous per-series blocks. VRAINS is split
+        /// into two blocks (138-143, then 177-191) because ZEXAL's block
+        /// (144-176) was inserted between them in chardata.bin - both
+        /// halves map to YuGiOhVRAINS here.</summary>
         public static LotdDuelSeries GetSeries(byte characterId) => characterId switch
         {
             >= 1 and <= 36 => LotdDuelSeries.YuGiOh5D,

@@ -381,8 +381,6 @@ public partial class MainWindow : Window
         byte[] bytes = File.ReadAllBytes(_currentPath);
         AppContext.State.SavePath = _currentPath;
 
-        // Detect which on-disk save format this file uses (original "Lotd" vs
-        // "Link Evolution") - see LotdSaveFormat.DetectVersion.
         AppContext.State.Version = LotdSaveFormat.DetectVersion(bytes);
         SlotLayout.CurrentVersion = AppContext.State.Version;
 

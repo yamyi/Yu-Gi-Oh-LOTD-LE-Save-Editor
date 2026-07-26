@@ -12,7 +12,8 @@ namespace YuGiOhSaveEditor.Views;
 /// EnableCacheCheckBox, CacheSizeText, OpenCacheFolderButton,
 /// ClearCacheButton, CacheLimitBox, CacheLimitApplyButton, WarmCacheButton,
 /// CancelWarmCacheButton, WarmCacheStatusText, ThemeCombo, RestartNowButton,
-/// ThemeRestartHintText, VersionText) is declared once in SettingsView.xaml;
+/// ThemeRestartHintText, VersionText, ViewOnGitHubButton,
+/// ViewDocumentationButton) is declared once in SettingsView.xaml;
 /// this class only ever reads/writes AppContext.State.IsOfflineMode/
 /// DiskCacheEnabled/CacheSizeLimitMB/ThemeName, calls CardImageProvider's
 /// cache helpers, opens the cache folder via UrlLauncher, and sets
@@ -181,6 +182,27 @@ public partial class SettingsView : UserControl
         {
             AppMessageBox.Show(Window.GetWindow(this), "Couldn't open the cache folder.",
                 "Open Cache Folder", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private const string GitHubUrl = "https://github.com/yamyi/Yu-Gi-Oh-LOTD-LE-Save-Editor";
+    private const string DocumentationUrl = GitHubUrl + "/tree/master/Documentation";
+
+    private void ViewOnGitHubButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!UrlLauncher.TryOpen(GitHubUrl))
+        {
+            AppMessageBox.Show(Window.GetWindow(this), "Couldn't open that link in your browser.",
+                "View on GitHub", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void ViewDocumentationButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!UrlLauncher.TryOpen(DocumentationUrl))
+        {
+            AppMessageBox.Show(Window.GetWindow(this), "Couldn't open that link in your browser.",
+                "Documentation", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 

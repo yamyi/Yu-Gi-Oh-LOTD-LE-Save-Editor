@@ -194,6 +194,14 @@
                                FontFamily="Segoe UI" FontSize="11" Foreground="{StaticResource TextDimBrush}"
                                TextWrapping="Wrap" Margin="0,10,0,10" />
 
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                        <Button x:Name="ViewOnGitHubButton" Content="VIEW ON GITHUB" Width="160"
+                                Style="{StaticResource SecondaryButtonStyle}" Click="ViewOnGitHubButton_Click" />
+                        <Button x:Name="ViewDocumentationButton" Content="DOCUMENTATION" Width="160"
+                                Margin="8,0,0,0"
+                                Style="{StaticResource SecondaryButtonStyle}" Click="ViewDocumentationButton_Click" />
+                    </StackPanel>
+
                 </StackPanel>
             </ScrollViewer>
         </DockPanel>

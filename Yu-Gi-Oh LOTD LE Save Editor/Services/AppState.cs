@@ -7,12 +7,6 @@ namespace YuGiOhSaveEditor.Services
         public string SavePath { get; set; } = "";
         public byte[]? SaveBytes { get; set; }
 
-        // Which on-disk save format is currently loaded (original "Lotd" vs
-        // "Link Evolution") — detected from the header magic bytes right after
-        // a file is read (see LotdSaveFormat.DetectVersion, called from
-        // MainForm.LoadSaveSlots). Everything that depends on chunk offsets
-        // (SlotLayout, MiscSaveLayout, CampaignSaveLayout, CardCollectionLayout)
-        // reads this rather than assuming a fixed format.
         public LotdSaveVersion Version { get; set; } = LotdSaveVersion.LinkEvolution;
 
         // Dirty-tracking baseline, mirrored here (not just as a MainForm-local
@@ -56,8 +50,7 @@ namespace YuGiOhSaveEditor.Services
         public event Action<bool>? OfflineModeChanged;
 
         // Whether CardImageProvider is allowed to read/write its on-disk
-        // image cache at all - added 2026-07-23 per user request to make
-        // disk caching itself optional. When false, every image request
+        // image cache at all. When false, every image request
         // (while online) goes straight to the network and nothing is
         // written to disk, i.e. "contacts the website each time" rather than
         // persisting anything between requests. Defaults to true so behavior

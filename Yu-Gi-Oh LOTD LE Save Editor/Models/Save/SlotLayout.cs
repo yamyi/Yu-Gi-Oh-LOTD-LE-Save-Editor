@@ -3,31 +3,10 @@ namespace YuGiOhSaveEditor.Services
 {
 
     /// <summary>
-    /// Memory layout of a single deck slot in the LOTD save file.
-    ///
-    /// The deck-slot array sits at a different absolute offset depending on
-    /// which save format is loaded — see Slot1Offset/CurrentVersion below and
-    /// LotdSaveFormat.cs (offsets there are ported from pixeltris/Lotd, the
-    /// original reverse-engineered save-editing tool for this game). The
-    /// field-level layout within a single 0x130-byte slot block was confirmed
-    /// independently by binary diffing two saves (savegame.dat vs ful_1.dat)
-    /// and is the same across both save formats.
-    ///
-    /// Slot array layout:
-    ///   Slot 1 offset = Slot1Offset (version-dependent, see below)
-    ///   slotBase            = countsOffset - CountsOffset
-    ///   Each subsequent slot = slotBase + (n * SlotStrideBytes)
-    /// 
-    /// Full slot map (relative to slotBase):
-    ///   0x000  Name          (64 bytes, UTF-16 LE, null-terminated, 32 chars max)
-    ///   0x040  Main count    (uint16 LE)
-    ///   0x042  Extra count   (uint16 LE)
-    ///   0x044  Side count    (uint16 LE)
-    ///   0x046  Card data     (180 bytes: 60 main + 15 extra + 15 side, each uint16 LE)
-    ///   0x0FC  Created       (12 bytes, game-internal timestamp format)
-    ///   0x108  Modified      (12 bytes, game-internal timestamp format)
-    ///   0x120  OwnerId       (uint16 LE, from OwnerDatabase, e.g. 0x8A = 138 -> IN4-M8)
-    ///   0x12C  Occupied      (byte: 0x01 = slot has a deck, 0x00 = empty)
+    /// Memory layout of a single deck slot in the LOTD:LE save file - a
+    /// single 0x130-byte block, one per deck slot. See Slot1Offset below and
+    /// LotdSaveFormat.cs for where the array starts.
+    /// Full byte map: see Documentation/SaveFormat.md.
     /// </summary>
     public static class SlotLayout
     {
@@ -42,18 +21,9 @@ namespace YuGiOhSaveEditor.Services
 
         // ── Slot base anchor ─────────────────────────────────────────────────────
 
-        /// Which save format is currently loaded — set by MainForm right after a
-        /// save file is read (see LotdSaveFormat.DetectVersion). Defaults to
-        /// LinkEvolution so behavior is unchanged for anyone who was already
-        /// relying on the previous hardcoded offset before version detection
-        /// existed.
         public static LotdSaveVersion CurrentVersion { get; set; } = LotdSaveVersion.LinkEvolution;
 
-        /// Absolute offset of the first slot's counts field. Version-dependent —
-        /// the original "Lotd" (2016) save format and the "Link Evolution"
-        /// (2019+) format put the deck-slot array at different offsets because
-        /// Link Evolution inserted a 6th duel series (VRAINS) and larger
-        /// battle-pack/misc/card-list chunks ahead of it. See LotdSaveFormat.cs.
+        /// Absolute offset of the first slot's counts field. See LotdSaveFormat.cs.
         public static int Slot1Offset => LotdSaveFormat.GetDecksOffset(CurrentVersion);
 
 
@@ -85,10 +55,8 @@ namespace YuGiOhSaveEditor.Services
         public const int CardDataByteLength = (MaxMainCards + MaxExtraCards + MaxSideCards) * sizeof(ushort); // 180
 
 
-        /// Game-internal creation timestamp (12 bytes).
-        /// Byte layout (confirmed from binary diff):
-        ///   [0-1]  Year  (uint16 LE, e.g. 0x07EA = 2026)
-        ///   [1-11] Unknown game-internal fields — use fixed values from a real save
+        /// Game-internal creation timestamp (12 bytes). [0-1] Year (uint16 LE);
+        /// [1-11] unknown fields - use fixed values from a real save.
         public const int CreatedTimestampOffset = 0x0FC;
         public const int TimestampByteLength = 12;
 

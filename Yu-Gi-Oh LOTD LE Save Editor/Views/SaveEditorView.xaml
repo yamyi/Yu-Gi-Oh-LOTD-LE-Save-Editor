@@ -644,8 +644,7 @@
                                  then SET writes just that one slot via
                                  CardCollectionLayout.SetCount/SetSeen. Everything else on
                                  this tab is bulk-only (see CardCollectionLayout's top doc
-                                 comment) - this is the one exception, now that LotdId is
-                                 confirmed to be the real save-slot index. -->
+                                 comment) - this is the one exception. -->
                             <TextBlock Text="UNLOCK A SPECIFIC CARD" Style="{StaticResource SectionHeadingStyle}" />
                             <TextBox x:Name="CardSearchBox" Style="{StaticResource NumBoxStyle}" Width="300"
                                      HorizontalAlignment="Left" TextChanged="CardSearchBox_TextChanged" />

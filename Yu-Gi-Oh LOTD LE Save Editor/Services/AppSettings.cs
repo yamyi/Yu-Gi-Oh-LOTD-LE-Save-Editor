@@ -7,9 +7,7 @@ namespace YuGiOhSaveEditor.Services
     /// Persists the handful of Settings-page preferences
     /// (AppState.IsOfflineMode / DiskCacheEnabled / CacheSizeLimitMB /
     /// ThemeName) to a small JSON file under %LocalAppData%, so they survive
-    /// an app restart instead of silently resetting to their defaults every
-    /// launch - added 2026-07-23 per user report ("the settings (offline
-    /// mode, cache size, etc...) are reset after closing the app").
+    /// an app restart instead of resetting to their defaults every launch.
     /// App.xaml.cs calls Load() once at startup, before anything else reads
     /// AppState (ThemeName in particular has to be read before base.OnStartup
     /// constructs MainWindow - see App.ApplyTheme); SettingsView's change

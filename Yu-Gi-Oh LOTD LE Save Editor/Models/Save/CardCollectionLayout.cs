@@ -1,54 +1,23 @@
 namespace YuGiOhSaveEditor.Services
 {
-    /// <summary>
-    /// Reads/writes the "CardList" save chunk directly against the raw save byte[] —
-    /// one byte per card slot, tracking how many copies are owned and whether the
-    /// card has been "seen" (a false value here is what puts the "NEW" ribbon on a
-    /// card in the in-game collection). Ported verbatim from pixeltris/Lotd's
-    /// CardListSaveData / CardState struct (Lotd/SaveData/CardListSaveData.cs).
-    ///
-    /// IMPORTANT: the index used here is the card's position in this byte array,
-    /// which is NOT the same id used elsewhere in the save (deck slot card ids).
-    /// It DOES, however, match this project's own Assets/cards/Cards.json
-    /// `lotd_id` field (confirmed 2026-07-23: a real save's owned card indices
-    /// and Cards.json's lotd_id values both span ~4007-14968) - so per-card
-    /// editing by name is actually possible via that field, contrary to what
-    /// this comment used to claim. Only bulk operations (unlock everything,
-    /// set every count, etc.) are exposed for now though, matching the scope
-    /// of pixeltris/Lotd's own SetAllOwnedCardsCount helper - per-card editing
-    /// would be new work, not implemented here yet.
-    /// </summary>
+    /// <summary>Reads/writes the "CardList" save chunk: one byte per card
+    /// slot, tracking copies owned and whether "seen" (false puts the "NEW"
+    /// ribbon on a card in-game). The index here is the card's position in
+    /// this byte array, matching Assets/cards/Cards.json's `lotd_id` field -
+    /// not the id used elsewhere in the save (deck slot card ids).</summary>
     public static class CardCollectionLayout
     {
-        /// <summary>The owned-count field is bits 0-2 of the raw byte (see
-        /// GetRawValue's doc comment) and the game never lets a card's count
-        /// exceed 3, even though 3 bits could technically hold up to 7 - used
-        /// wherever a "max possible copies" figure is needed (e.g. the Cards
-        /// tab's total-copies-owned counter).</summary>
+        /// <summary>Owned-count is bits 0-2 of the raw byte; the game never
+        /// lets a card's count exceed 3 even though 3 bits could hold 7.</summary>
         public const byte MaxCountPerCard = 3;
 
         public static int GetNumCards(LotdSaveVersion v) => LotdSaveFormat.GetNumCards(v);
 
-        /// <summary>
-        /// Total byte slots in the CardList chunk (CardListOffset..EOF), i.e. what
-        /// pixeltris/Lotd calls GetNumCards2() - the game reads/writes this many
-        /// slots on every load/save, not just GetNumCards(v). For LinkEvolution
-        /// this is 20000 vs GetNumCards()'s 10027: the file reserves room for
-        /// future cards beyond the real card total. Bulk operations below use
-        /// this wider bound so "unlock all"/"reset all"/"mark all seen" actually
-        /// cover every card the game itself considers part of the collection,
-        /// instead of silently stopping short.
-        ///
-        /// IMPORTANT: real (non-padding) card slots are NOT the first
-        /// GetNumCards(v) indices - a real save with every card owned (3x) had
-        /// its owned slots scattered across indices ~4007-14964 (353 separate
-        /// runs), confirmed 2026-07-23 (see this class's top doc comment for
-        /// the Cards.json `lotd_id` mapping that covers the same index range),
-        /// so any UI/logic that needs an "X owned out of Y" figure must scan
-        /// the FULL GetNumCardSlots range for X and use GetNumCards(v) only as
-        /// the Y denominator - never assume real cards live in a
-        /// 0..GetNumCards-1 prefix.
-        /// </summary>
+        /// <summary>Total byte slots in the CardList chunk (20000) - the
+        /// file reserves room beyond the real card total (10027), and real
+        /// cards are scattered across the full range, not a leading prefix.
+        /// Bulk operations use this wider bound; GetNumCards is only ever
+        /// the display denominator.</summary>
         public static int GetNumCardSlots(LotdSaveVersion v) => LotdSaveFormat.GetCardListSize(v);
 
         /// <summary>Raw byte layout: bits 0-2 = owned count (0-3), bit 3 = seen, bits 4-7 = unknown.</summary>
@@ -100,24 +69,17 @@ namespace YuGiOhSaveEditor.Services
                 save[offset + i] = raw;
         }
 
-        /// <summary>3 copies of everything in the CardList chunk, marked seen.
-        /// NOT used by the Cards tab's "Unlock All Cards" button (see
-        /// SetCardsCount below and its doc comment) - kept only as the raw
-        /// pixeltris/Lotd-equivalent primitive, since it touches every
-        /// padding slot in the chunk too.</summary>
+        /// <summary>3 copies of everything in the CardList chunk, marked
+        /// seen. NOT used by the Cards tab's "Unlock All Cards" button (see
+        /// SetCardsCount) - touches every padding slot too.</summary>
         public static void UnlockAllCards(byte[] save, LotdSaveVersion v) =>
             SetAllOwnedCardsCount(save, v, 3, true);
 
         /// <summary>Sets count/seen on exactly the given card indices,
-        /// leaving every other slot untouched. This is what the Cards tab's
-        /// "Unlock All Cards" button actually calls, passing
-        /// AppContext.CardDb.AllLotdIds() - restricting to real (Cards.json-
-        /// mapped) slots rather than the full GetNumCardSlots chunk. Using
-        /// UnlockAllCards/SetAllOwnedCardsCount instead would set every one of
-        /// the ~9973 unmapped padding slots to owned too, which used to make
-        /// the Cards tab's counter read e.g. "20000/10027" after unlocking -
-        /// confirmed as a bug 2026-07-23 now that Cards.json maps all 10027
-        /// real cards (see CardDatabase.AllLotdIds).</summary>
+        /// leaving every other slot untouched. What the Cards tab's "Unlock
+        /// All Cards" button calls, passing AppContext.CardDb.AllLotdIds() -
+        /// unlike UnlockAllCards, this doesn't touch unmapped padding
+        /// slots.</summary>
         public static void SetCardsCount(byte[] save, LotdSaveVersion v, IEnumerable<int> cardIndices, byte count, bool seen)
         {
             foreach (int i in cardIndices)
@@ -127,17 +89,10 @@ namespace YuGiOhSaveEditor.Services
             }
         }
 
-        /// <summary>Sets the owned copy count on every ALREADY-owned card
-        /// only - unowned slots (count == 0) are left untouched at 0, and
-        /// each touched card's existing Seen flag is preserved rather than
-        /// forced on. This is the real "set every owned card's count" ask:
-        /// SetAllOwnedCardsCount (above) touches every slot in the chunk
-        /// regardless of current ownership, which also turns previously-
-        /// unowned padding/real-but-unowned slots "owned" - fine for "unlock
-        /// all cards" (which wants exactly that), wrong for bulk-editing the
-        /// count of cards you already have. Covers the full GetNumCardSlots
-        /// range - see GetNumCardSlots for why real cards can't be assumed to
-        /// sit in a 0..GetNumCards-1 prefix.</summary>
+        /// <summary>Sets the owned copy count on every already-owned card
+        /// only - unowned slots stay at 0, existing Seen flags are
+        /// preserved. Unlike SetAllOwnedCardsCount, doesn't turn unowned
+        /// slots "owned."</summary>
         public static void SetOwnedCardsCount(byte[] save, LotdSaveVersion v, byte count)
         {
             int n = GetNumCardSlots(v);

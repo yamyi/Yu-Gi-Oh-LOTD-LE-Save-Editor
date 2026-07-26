@@ -1,63 +1,39 @@
 namespace YuGiOhSaveEditor.Services
 {
-    /// <summary>
-    /// Which on-disk save format a .dat file uses. The game shipped in two eras
-    /// with genuinely different save layouts:
-    ///   - Lotd: the original 2016 "Yu-Gi-Oh! Legacy of the Duelist" (29005 bytes,
-    ///     5 duel series — no VRAINS).
-    ///   - LinkEvolution: the 2019+ "Link Evolution" remaster (44008 bytes,
-    ///     6 duel series — adds VRAINS/Pendulum-era content).
-    /// Detected automatically from the file's header magic bytes — see DetectVersion.
-    /// </summary>
+    /// <summary>On-disk save format version. Only Link Evolution (2019+) is
+    /// supported.</summary>
     public enum LotdSaveVersion
     {
-        Lotd,
         LinkEvolution,
     }
 
     /// <summary>
-    /// Full binary layout of the LOTD save file — every top-level chunk, not just
-    /// the deck slots already covered by SlotLayout.cs. Ported directly from
-    /// pixeltris/Lotd (Lotd/SaveData/GameSaveData.cs, Constants.cs), the source
-    /// of the original reverse-engineered save-editing tool for this game.
-    /// Offsets/sizes below are taken verbatim from that project.
-    /// See https://github.com/pixeltris/Lotd
+    /// Full binary layout of the Link Evolution save file - every top-level
+    /// chunk, not just the deck slots already covered by SlotLayout.cs.
+    /// Ported from pixeltris/Lotd (Lotd/SaveData/GameSaveData.cs,
+    /// Constants.cs). See https://github.com/pixeltris/Lotd
     ///
-    /// File chunk order (all versions): header (20B) → unknown block (16B) →
-    /// Stats → BattlePacks → Misc → Campaign → Decks → CardList → EOF.
+    /// Chunk order: header (20B) -&gt; unknown block (16B) -&gt; Stats -&gt;
+    /// BattlePacks -&gt; Misc -&gt; Campaign -&gt; Decks -&gt; CardList -&gt; EOF.
     /// </summary>
     public static class LotdSaveFormat
     {
         // ── Header magic (bytes 0-7) ─────────────────────────────────────────────
-        // Byte 0-3 is the same for both versions; byte 4-7 tells them apart.
         private const uint HeaderMagic1 = 0x54CE29F9;
-        private const uint HeaderMagic2_Lotd = 0x04714D02;
-        private const uint HeaderMagic2_LinkEvolution = 0x04ABE802;
+        private const uint HeaderMagic2 = 0x04ABE802;
 
-        /// <summary>
-        /// Detects which save format a loaded buffer uses by reading its header
-        /// magic (bytes 4-7). Defaults to LinkEvolution if the buffer is too
-        /// short or the magic doesn't match either known value.
-        /// </summary>
-        public static LotdSaveVersion DetectVersion(byte[]? save)
-        {
-            if (save == null || save.Length < 8)
-                return LotdSaveVersion.LinkEvolution;
+        /// <summary>Always returns LinkEvolution - kept so call sites don't
+        /// need to change if another format is ever added.</summary>
+        public static LotdSaveVersion DetectVersion(byte[]? save) => LotdSaveVersion.LinkEvolution;
 
-            uint magic2 = ReadU32(save, 4);
-            return magic2 == HeaderMagic2_Lotd ? LotdSaveVersion.Lotd : LotdSaveVersion.LinkEvolution;
-        }
-
-        /// <summary>True if the buffer's header magic matches a known LOTD save at all.</summary>
+        /// <summary>True if the buffer's header magic matches a Link Evolution save.</summary>
         public static bool HasValidHeader(byte[] save)
         {
             if (save == null || save.Length < 8) return false;
-            uint magic1 = ReadU32(save, 0);
-            uint magic2 = ReadU32(save, 4);
-            return magic1 == HeaderMagic1 && (magic2 == HeaderMagic2_Lotd || magic2 == HeaderMagic2_LinkEvolution);
+            return ReadU32(save, 0) == HeaderMagic1 && ReadU32(save, 4) == HeaderMagic2;
         }
 
-        // ── Fixed geometry (same across versions) ────────────────────────────────
+        // ── Fixed geometry ────────────────────────────────────────────────────────
         public const int NumBattlePacks = 5;
         public const int NumUserDecks = 32;
         public const int DuelsPerSeries = 50;
@@ -70,53 +46,25 @@ namespace YuGiOhSaveEditor.Services
 
         public const int StatsOffset = 36;
 
-        // ── Version-dependent geometry (verbatim from GameSaveData.cs) ───────────
-        public static int GetFileLength(LotdSaveVersion v) =>
-            v == LotdSaveVersion.Lotd ? 29005 : 44008;
+        // ── Geometry (verbatim from GameSaveData.cs) ─────────────────────────────
+        public static int GetFileLength(LotdSaveVersion v) => 44008;
+        public static int GetNumDuelSeries(LotdSaveVersion v) => 6;
+        public static int GetNumDeckDataSlots(LotdSaveVersion v) => 700;
+        public static int GetRecipeBufferBytes(LotdSaveVersion v) => 88;
 
-        public static int GetNumDuelSeries(LotdSaveVersion v) =>
-            v == LotdSaveVersion.Lotd ? 5 : 6;
+        /// <summary>Real (non-padding) card count. Real cards are scattered
+        /// throughout the full 20000-slot CardList chunk, not clustered in a
+        /// 0..N-1 prefix - see CardCollectionLayout's bulk methods, which
+        /// scan the full chunk rather than assuming this count is a
+        /// contiguous range.</summary>
+        public static int GetNumCards(LotdSaveVersion v) => 10027;
 
-        public static int GetNumDeckDataSlots(LotdSaveVersion v) =>
-            v == LotdSaveVersion.Lotd ? 477 : 700;
-
-        public static int GetRecipeBufferBytes(LotdSaveVersion v) =>
-            v == LotdSaveVersion.Lotd ? 60 : 88;
-
-        /// <summary>Real (non-padding) card count. LinkEvolution's value was
-        /// corrected 2026-07-23 from an old 10166 estimate to 10027 (10341 was
-        /// floated and then retracted as a mistake - 10027 is confirmed),
-        /// verified against a real save with every real card owned (3x) and
-        /// every other slot at 0 - a clean bimodal split with no partial
-        /// counts. This project's own Assets/cards/Cards.json independently
-        /// has lotd_id mappings for all 10027 cards (the one missing entry,
-        /// lotd_id 6053 = "7", was found and added 2026-07-23). That save
-        /// also proved real cards are scattered
-        /// throughout the full 20000-slot CardList chunk (owned indices ran
-        /// ~4007-14964, 353 separate runs), not clustered in a 0..N-1 prefix -
-        /// see CardCollectionLayout's summary/bulk methods, which scan the
-        /// full chunk rather than assuming this count is a contiguous
-        /// range.</summary>
-        public static int GetNumCards(LotdSaveVersion v) =>
-            v == LotdSaveVersion.Lotd ? 7581 : 10027;
-
-        public static int GetNumStats(LotdSaveVersion v) =>
-            v == LotdSaveVersion.Lotd ? 43 : 100;
-
-        public static int GetBattlePacksOffset(LotdSaveVersion v) =>
-            v == LotdSaveVersion.Lotd ? 380 : 836;
-
-        public static int GetMiscDataOffset(LotdSaveVersion v) =>
-            v == LotdSaveVersion.Lotd ? 3600 : 4056;
-
-        public static int GetCampaignDataOffset(LotdSaveVersion v) =>
-            v == LotdSaveVersion.Lotd ? 5648 : 7024;
-
-        public static int GetDecksOffset(LotdSaveVersion v) =>
-            v == LotdSaveVersion.Lotd ? 11696 : 14280;
-
-        public static int GetCardListOffset(LotdSaveVersion v) =>
-            v == LotdSaveVersion.Lotd ? 21424 : 24008;
+        public static int GetNumStats(LotdSaveVersion v) => 100;
+        public static int GetBattlePacksOffset(LotdSaveVersion v) => 836;
+        public static int GetMiscDataOffset(LotdSaveVersion v) => 4056;
+        public static int GetCampaignDataOffset(LotdSaveVersion v) => 7024;
+        public static int GetDecksOffset(LotdSaveVersion v) => 14280;
+        public static int GetCardListOffset(LotdSaveVersion v) => 24008;
 
         // ── Derived sizes (each chunk runs up to the start of the next) ──────────
         public static int GetStatsSize(LotdSaveVersion v) => GetBattlePacksOffset(v) - StatsOffset;

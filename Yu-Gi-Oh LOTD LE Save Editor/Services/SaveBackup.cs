@@ -7,12 +7,10 @@ namespace YuGiOhSaveEditor.Services;
 /// Creates and enumerates the timestamped sibling backups MainWindow makes
 /// of a save file. MainWindow.OnSaveFile calls Create right before writing
 /// the in-memory (edited) bytes back to disk, so it always backs up the
-/// exact on-disk state that write is about to overwrite - not on Open
-/// Save (an open you never save from no longer leaves a backup sitting
-/// behind). Pulled out of MainWindow.xaml.cs into its own class 2026-07-23
-/// so RestoreBackupWindow can list the exact same backups this class
-/// creates, using the exact same naming convention and directory - a save
-/// at "C:\saves\savegame.dat" gets backups named
+/// exact on-disk state that write is about to overwrite - not on Open Save.
+/// RestoreBackupWindow lists the exact same backups this class creates,
+/// using the same naming convention and directory - a save at
+/// "C:\saves\savegame.dat" gets backups named
 /// "savegame.dat.bak_yyyyMMdd_HHmmss" (or "..._2", "..._3", ... if more than
 /// one backup happens to land in the same second) right next to it.
 /// </summary>

@@ -588,11 +588,11 @@ No runtime downloads are required beyond optional card artwork.
 
 <summary><strong>Implementation Details</strong></summary>
 
-The project separates every region of the save into dedicated layout classes.
+The project separates every region of the save into dedicated layout classes. For the full byte-level reference (chunk offsets, field tables, and an interactive diagram), see [`Documentation/SaveFormat.md`](Documentation/SaveFormat.md) and [`Documentation/SaveLayoutDiagram.html`](Documentation/SaveLayoutDiagram.html).
 
 ### LotdSaveFormat
 
-Defines version-specific information including:
+Defines the save file's fixed geometry, including:
 
 - Deck slot counts
 - Card table sizes
@@ -669,6 +669,7 @@ The card database maps Link Evolution's internal card IDs to the richer YGOPRODe
 </details>
 
 ---
+
 # Known Limitations
 
 Although the editor supports nearly every aspect of the save format, a few limitations remain.

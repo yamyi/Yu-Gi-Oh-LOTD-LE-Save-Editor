@@ -136,10 +136,10 @@
                              SelectionChanged="SideNav_SelectionChanged">
                         <ListBox.ItemsSource>
                             <x:Array Type="controls:TabItemViewModel">
-                                <controls:TabItemViewModel Text="DECK SLOTS" Description="Browse and manage your saved deck slots." IconGlyph="&#xE71D;" />
-                                <controls:TabItemViewModel Text="DECK EDITOR" Description="Build and edit your Main, Extra, and Side Decks." IconGlyph="&#xE70F;" />
+                                <controls:TabItemViewModel Text="DECK SLOTS" Description="Manage your user deck slots." IconGlyph="&#xE71D;" />
+                                <controls:TabItemViewModel Text="DECK EDITOR" Description="Build and edit your user deck." IconGlyph="&#xE70F;" />
                                 <controls:TabItemViewModel Text="CARD SEARCH" Description="Search the full card database." IconGlyph="&#xE721;" />
-                                <controls:TabItemViewModel Text="SAVE EDITOR" Description="Edit duel points, campaign progress, and unlocks." IconGlyph="&#xE74E;" />
+                                <controls:TabItemViewModel Text="SAVE EDITOR" Description="Edit/unlock game progress." IconGlyph="&#xE74E;" />
                                 <controls:TabItemViewModel Text="SETTINGS" Description="Configure app preferences." IconGlyph="&#xE713;" />
                             </x:Array>
                         </ListBox.ItemsSource>

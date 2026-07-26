@@ -1,55 +1,10 @@
 namespace YuGiOhSaveEditor.Services
 {
-    /// <summary>
-    /// Duelists whose shop packs can be unlocked. Bits 1-26 copied verbatim from
-    /// pixeltris/Lotd's UnlockedShopPacks flags enum (Lotd/SaveData/MiscSaveData.cs)
-    /// — this is a bitfield, one bit per duelist. Bits 1-23 are confirmed correct:
-    /// they line up exactly in order with the real Yu-Gi-Oh/GX/5D's/ZEXAL shop
-    /// pack list. "Pendulum" (bit 24) doesn't match any real duelist name -
-    /// pixeltris's own comment says any of bits 24-26 unlocks the whole ARC-V
-    /// group, which was accurate for the original 2016 game's 3-duelist ARC-V
-    /// roster, but is unverified for Link Evolution's larger one.
-    ///
-    /// Shay/DeclanAkaba/YuyaSakaki/Playmaker (bits 27-30) were originally added
-    /// here as an experimental guess (not present in pixeltris/Lotd - Link
-    /// Evolution added them to the shop after that enum was last
-    /// reverse-engineered, and these 4 bits were sitting completely
-    /// unused/unnamed) but have since been CONFIRMED CORRECT against a real
-    /// save/in-game purchase check - all four unlock properly.
-    ///
-    /// Blue Angel/Soulburner/Varis/Ai and Epic Dawn (also sold as a "shop
-    /// pack" of sorts, per the game's framing of Battle Packs) are now all
-    /// fully resolved - just not in this field. Two rounds of real-save
-    /// diffing plus one live in-game confirmation (all 2026-07-23) settled it:
-    ///   - Its ShopPacks value is 0xFEFFFFFE: every bit from 1-23 and 25-31 is
-    ///     set, while bits 0 and 24 (Pendulum) are clear. That confirms bit 0
-    ///     is genuinely never used, and confirms Pendulum (bit 24) really is
-    ///     unused filler in Link Evolution - not a "ARC-V group toggle" the
-    ///     way it was in the original 2016 game.
-    ///   - Bit 31 turned out NOT to be a Blue Angel/VRAINS-group bit at all -
-    ///     a byte-diff of two saves differing only in "does/doesn't own Epic
-    ///     Dawn" showed exactly one bit change anywhere in the whole file's
-    ///     unlock-related fields: ShopPacks gained bit 31 (0x40000002 ->
-    ///     0xC0000002), with UnlockedBattlePacks staying 0x0 in both saves.
-    ///     So bit 31 IS Epic Dawn's real unlock flag (see EpicDawn below) -
-    ///     it just isn't stored in UnlockedBattlePacks, despite being a
-    ///     "Battle Pack" in the game's own UI.
-    ///   - A second before/after diff isolating Blue Angel's pack found the
-    ///     mirror image: ShopPacks didn't move a single bit (still
-    ///     0xC0000002 in both saves) - Blue Angel's flag isn't here either.
-    ///     It's UnlockedBattlePacks.BlueAngel (bit 0 of that field) instead -
-    ///     see that enum's doc comment.
-    ///   - With bit 31 confirmed as Epic Dawn, ShopPacks is a fully consumed
-    ///     32-bit field (0 unused, 24 unused filler, 1-23/25-31 all named) -
-    ///     there was never room here for Blue Angel or the other 2 remaining
-    ///     VRAINS duelists (Soulburner/Varis/Ai) to begin with. The reserved
-    ///     8-byte gap after BattlePacksFlag remains confirmed all-zero in
-    ///     every real save seen so far. Soulburner/Varis/Ai turned out to be
-    ///     UnlockedBattlePacks' remaining bits 3-5, CONFIRMED via live in-game
-    ///     testing after being wired up as a numbering hypothesis - see that
-    ///     enum's doc comment. That closes out every one of Link Evolution's
-    ///     33 shop duelists.
-    /// </summary>
+    /// <summary>Duelists whose shop packs can be unlocked, one bit per
+    /// duelist. Bit 0 and bit 24 (Pendulum) are unused filler. Bit 31
+    /// (EpicDawn) is Epic Dawn's flag despite being framed as a "Battle
+    /// Pack" in-game. Blue Angel/Soulburner/Varis/Ai live in
+    /// UnlockedBattlePacks instead.</summary>
     [Flags]
     public enum UnlockedShopPacks : uint
     {
@@ -77,84 +32,37 @@ namespace YuGiOhSaveEditor.Services
         KiteTenjo = 1 << 21,
         Shark = 1 << 22,
         YumaTsukumo = 1 << 23,
-        // Confirmed unused filler in Link Evolution - clear in a real
-        // fully-unlocked save (see class doc comment). Left defined for
-        // backward compatibility/documentation only, never set by this app.
+        // Unused filler in Link Evolution.
         Pendulum = 1 << 24,
         GongStrong = 1 << 25,
         ZuzuBoyle = 1 << 26,
-        // Confirmed against a real save - see class doc comment above.
         Shay = 1 << 27,
         DeclanAkaba = 1 << 28,
         YuyaSakaki = 1 << 29,
         Playmaker = 1 << 30,
-        // CONFIRMED CORRECT via a real before/after save diff (see class doc
-        // comment) - despite being a "Battle Pack" in-game, its flag lives
-        // here in ShopPacks, not in UnlockedBattlePacks.
+        // Epic Dawn's real unlock flag - despite being a "Battle Pack" in-game,
+        // it lives here in ShopPacks, not in UnlockedBattlePacks.
         EpicDawn = 1u << 31,
         All = GrandpaMuto | MaiValentine | Bakura | JoeyWheeler | SetoKaiba | Yugi
             | AlexisRhodes | BastionMisawa | ChazzPrinceton | SyrusTruesdale | JesseAnderson | JadenYuki
             | TetsuTrudge | LeoLuna | AkizaIzinski | JackAtlas | Crow | YuseiFudo
             | CathyKatherine | Quinton | KiteTenjo | Shark | YumaTsukumo
             | GongStrong | ZuzuBoyle | Shay | DeclanAkaba | YuyaSakaki | Playmaker
-            | EpicDawn // = 0xFEFFFFFE, byte-for-byte the real save's fully-unlocked value
+            | EpicDawn // = 0xFEFFFFFE
     }
 
-    /// <summary>
-    /// Copied verbatim from pixeltris/Lotd's UnlockedBattlePacks (Lotd/SaveData/
-    /// MiscSaveData.cs) - only 2 bits, WarOfTheGiants and WarOfTheGiantsRound2.
-    /// This field turns out to have NOTHING to do with "Battle Pack: Epic
-    /// Dawn" despite the name (see UnlockedShopPacks.EpicDawn) - but it DOES
-    /// hold one of the previously-unresolved VRAINS shop duelists: Blue Angel.
-    ///
-    /// WarOfTheGiants/WarOfTheGiantsRound2 (bits 2-1, in that order - see
-    /// below) are CONFIRMED CORRECT against a real save - toggling either one
-    /// alone, in isolation, unlocks that pack in-game with no other bits
-    /// required. Initially the two were assigned bit 1 = WarOfTheGiants /
-    /// bit 2 = WarOfTheGiantsRound2, but live in-game testing found that
-    /// backwards - corrected 2026-07-23 to bit 1 = WarOfTheGiantsRound2 /
-    /// bit 2 = WarOfTheGiants. Bit 0 was originally guessed to be Epic Dawn
-    /// and confirmed wrong that way (writing it alone did nothing in-game); a
-    /// real before/after save diff isolating Epic Dawn specifically
-    /// (2026-07-23) then proved this whole field is unrelated to Epic Dawn -
-    /// BattlePacksFlag was 0x0 in BOTH the "doesn't own Epic Dawn" and "owns
-    /// Epic Dawn" saves, with the only actual change being bit 31 of ShopPacks.
-    ///
-    /// Bit 0 = Blue Angel, CONFIRMED via a second before/after save diff
-    /// (2026-07-23) isolating "doesn't have Blue Angel's pack" vs. "has it":
-    /// BattlePacksFlag went 0x0 -> 0x5 (bits 0 AND 2), not just bit 0 alone -
-    /// but the user confirmed a War of the Giants pack (bit 2, already
-    /// independently confirmed and unrelated) was ALSO unlocked in that same
-    /// window, which fully accounts for bit 2's change. Bit 0 is the one
-    /// attributable to Blue Angel specifically. So despite being sold as a
-    /// normal duelist shop pack in-game, Blue Angel's real flag lives here,
-    /// not in ShopPacks - the mirror image of Epic Dawn (sold as a Battle
-    /// Pack, but actually a ShopPacks bit).
-    ///
-    /// That left bits 3-5, matched to Soulburner/Varis/Ai purely on a "3
-    /// remaining bits, 3 remaining VRAINS shop duelists, in their in-game
-    /// shop order" hypothesis - and CONFIRMED CORRECT via live in-game testing
-    /// (2026-07-23): all three unlock properly. So as of that date, this
-    /// field's all 6 bits (plus ShopPacks' bit 31 for Epic Dawn) fully account
-    /// for every one of Link Evolution's 33 shop duelists - nothing left
-    /// unresolved in the shop-pack unlock system.
-    /// </summary>
+    /// <summary>WarOfTheGiants/WarOfTheGiantsRound2 plus the remaining VRAINS
+    /// shop duelists this field holds: Blue Angel, Soulburner, Varis, Ai.
+    /// Unrelated to "Battle Pack: Epic Dawn" despite the name - see
+    /// UnlockedShopPacks.EpicDawn.</summary>
     [Flags]
     public enum UnlockedBattlePacks
     {
-        // CONFIRMED via a real before/after save diff isolating Blue Angel's
-        // pack specifically (see class doc comment) - despite being sold as a
-        // normal duelist shop pack in-game, its real flag lives here.
+        // Despite being sold as a normal duelist shop pack in-game, Blue
+        // Angel's real flag lives here, not in ShopPacks.
         BlueAngel = 1 << 0,
-        // Swapped 2026-07-23 - live in-game testing found these two backwards
-        // from the original guess (bit 1 was labeled WarOfTheGiants, bit 2
-        // WarOfTheGiantsRound2; it's the other way around).
         WarOfTheGiantsRound2 = 1 << 1,
         WarOfTheGiants = 1 << 2,
-        // CONFIRMED via live in-game testing (2026-07-23) - originally a
-        // numbering hypothesis ("3 remaining bits, 3 remaining VRAINS shop
-        // duelists, in shop order"), now verified correct: all three unlock
-        // properly in-game.
         Soulburner = 1 << 3,
         Varis = 1 << 4,
         Ai = 1 << 5,
@@ -205,31 +113,13 @@ namespace YuGiOhSaveEditor.Services
         Complete = 3
     }
 
-    /// <summary>
-    /// Reads/writes the "Misc" save chunk directly against the raw save byte[] —
-    /// duel points, unlocked avatars, duelist-challenge states, unlocked deck
-    /// recipes, unlocked shop/battle packs, completed tutorials, and the
-    /// padlocked-content flags. Field layout ported verbatim from
-    /// pixeltris/Lotd's MiscSaveData.Load/Save (Lotd/SaveData/MiscSaveData.cs).
-    ///
-    /// Byte layout, relative to LotdSaveFormat.GetMiscDataOffset(version):
-    ///   +0    16 bytes   reserved/unknown
-    ///   +16   8 bytes    DuelPoints (int64)
-    ///   +24   32 bytes   UnlockedAvatars bitfield (bit i = avatar id i, 0-152 used)
-    ///   +56   N*4 bytes  Challenges (int32 DeulistChallengeState per deck-data slot)
-    ///   ...   R bytes    UnlockedRecipes bitfield (bit i = deck-data slot id i)
-    ///   ...   4 bytes    UnlockedShopPacks (uint32 flags)
-    ///   ...   4 bytes    UnlockedBattlePacks (uint32 flags)
-    ///   ...   8 bytes    reserved/unknown (2 guessed shop-pack locations tried and ruled out here - see UnlockedShopPacks' doc comment)
-    ///   ...   4 bytes    CompleteTutorials (int32 flags)
-    ///   ...   4 bytes    UnlockedContent (int32 flags)
-    /// </summary>
+    /// <summary>Reads/writes the "Misc" save chunk: duel points, unlocked
+    /// avatars, duelist-challenge states, unlocked deck recipes, unlocked
+    /// shop/battle packs, completed tutorials, padlocked-content flags.
+    /// Full byte layout: see Documentation/SaveFormat.md.</summary>
     public static class MiscSaveLayout
     {
-        // Offsets below are public (not just an implementation detail of this
-        // class) so SaveLayout.cs can reference them directly for its whole-file
-        // map instead of duplicating the byte math - see SaveLayout's "Misc
-        // sub-fields" doc section for where each of these actually lands.
+        // Public so SaveLayout.cs can reference them directly for its whole-file map.
         public const int DuelPointsRelOffset = 16;
         public const int UnlockedAvatarsRelOffset = 24;
         public const int ChallengesRelOffset = 56;
@@ -244,7 +134,7 @@ namespace YuGiOhSaveEditor.Services
             GetShopPacksRelOffset(v) + 4;
 
         public static int GetTutorialsRelOffset(LotdSaveVersion v) =>
-            GetBattlePacksFlagRelOffset(v) + 4 + 8; // +8 = reserved bytes after the pack flags - both halves tried as a guessed shop-pack location and ruled out, left untouched now
+            GetBattlePacksFlagRelOffset(v) + 4 + 8; // +8 = reserved bytes after the pack flags
 
         public static int GetUnlockedContentRelOffset(LotdSaveVersion v) =>
             GetTutorialsRelOffset(v) + 4;
@@ -359,21 +249,14 @@ namespace YuGiOhSaveEditor.Services
 
         // ── Shop/Battle packs derived from Campaign story progress ──────────────
 
-        /// <summary>Public (not just an implementation detail of
-        /// SyncShopPacksFromCampaignState anymore) so SaveEditorView can pass
-        /// it to CanManuallyUnlockShopPack's lookup below.</summary>
+        /// <summary>Public so SaveEditorView can pass it to
+        /// CanManuallyUnlockShopPack's lookup below.</summary>
         public enum PackFlagKind { Shop, Battle }
 
-        /// <summary>Which real Campaign stage completing unlocks which shop/battle
-        /// pack duelist, user-supplied 2026-07-25 (real show milestones - the
-        /// stage a given duelist is introduced/beaten in each series). Stage
-        /// numbers are on-screen duel numbers, which - since every series'
-        /// KnownRealDuelRange starts at save array index 1 - equal the raw
-        /// CampaignSaveLayout duelIndex directly (Stage N = duelIndex N).
-        /// Grandpa Muto (Yu-Gi-Oh! Stage 2) is the one special case: per the
-        /// user, beating him unlocks not just his own booster pack but the
-        /// shop's gate itself (UnlockedContent.CardShop) - presumably because
-        /// he's the first shop-pack duelist encountered in the story.</summary>
+        /// <summary>Which real Campaign stage unlocks which shop/battle pack
+        /// duelist. Stage numbers equal the raw CampaignSaveLayout duelIndex
+        /// directly. Grandpa Muto (Yu-Gi-Oh! Stage 2) also unlocks the shop's
+        /// gate itself (UnlockedContent.CardShop).</summary>
         private static readonly (LotdDuelSeries Series, int Stage, string Duelist, PackFlagKind Kind, uint Flag, bool AlsoUnlocksCardShopGate)[] CampaignShopPackUnlocks =
         {
             (LotdDuelSeries.YuGiOh, 2, "Grandpa Muto", PackFlagKind.Shop, (uint)UnlockedShopPacks.GrandpaMuto, true),
@@ -419,24 +302,10 @@ namespace YuGiOhSaveEditor.Services
             (LotdDuelSeries.YuGiOhVRAINS, 25, "Ai", PackFlagKind.Battle, (uint)UnlockedBattlePacks.Ai, false),
         };
 
-        /// <summary>
-        /// Recomputes every duelist shop/battle pack flag (plus the Grandpa
-        /// Muto -> CardShop gate special case) from scratch against the
-        /// Campaign chunk's current duel states, per CampaignShopPackUnlocks -
-        /// same recompute-not-increment approach as StatsLayout's Recalculate*
-        /// methods, so this can never drift regardless of how a duel's state
-        /// got there (per-duel dropdown, bulk series buttons, or bulk
-        /// campaign-wide buttons). A pack unlocks exactly when its milestone
-        /// stage's forward state reads Complete, and re-locks the moment it
-        /// doesn't (unlock AND relock - reverse-mode state is intentionally
-        /// ignored, since replaying a story beat as the opponent isn't a real
-        /// story completion).
-        ///
-        /// Call after every Campaign duel-state write (see
-        /// SaveEditorView.DuelStateChanged/BulkSetSeries/BulkSetAll) so the
-        /// Unlocks tab's shop/battle pack checkboxes never drift from what the
-        /// Campaign tab actually shows.
-        /// </summary>
+        /// <summary>Recomputes every duelist shop/battle pack flag (plus the
+        /// Grandpa Muto -> CardShop gate) from the Campaign chunk's current
+        /// duel states. Unlocks and re-locks with the milestone stage's
+        /// forward state. Call after every Campaign duel-state write.</summary>
         public static void SyncShopPacksFromCampaignState(byte[] save, LotdSaveVersion v)
         {
             var shopPacks = GetShopPacks(save, v);
@@ -447,7 +316,7 @@ namespace YuGiOhSaveEditor.Services
             foreach (var entry in CampaignShopPackUnlocks)
             {
                 int seriesIndex = Array.IndexOf(series, entry.Series);
-                if (seriesIndex < 0) continue; // series not present in this save version (e.g. VRAINS in the older Lotd format)
+                if (seriesIndex < 0) continue;
 
                 bool complete = CampaignSaveLayout.GetState(save, v, seriesIndex, entry.Stage) == LotdCampaignDuelState.Complete;
 
@@ -465,22 +334,12 @@ namespace YuGiOhSaveEditor.Services
             SetUnlockedContent(save, v, content);
         }
 
-        /// <summary>
-        /// True if it's safe to MANUALLY unlock a specific story-stage-gated
-        /// shop/battle pack duelist right now - user-specified failsafe
-        /// (2026-07-25): "if the duel that unlocks a pack shop is not
-        /// complete then it can not be unlocked either." Looks up the pack's
-        /// milestone Series+Stage in CampaignShopPackUnlocks and checks
-        /// whether that stage's forward state currently reads Complete - the
-        /// exact same source of truth SyncShopPacksFromCampaignState writes
-        /// from, so the two can never disagree.
-        ///
-        /// Packs with no CampaignShopPackUnlocks entry - Epic Dawn/War of
-        /// the Giants/War of the Giants Round 2, gated on Wins_Nonmatch
-        /// thresholds instead (see StatsLayout.SyncBattlePackUnlocksFromNonmatchWins,
-        /// a completely different, already self-consistent mechanism) -
-        /// aren't covered by this guard and always return true.
-        /// </summary>
+        /// <summary>True if it's safe to manually unlock a story-stage-gated
+        /// shop/battle pack duelist right now. Packs with no
+        /// CampaignShopPackUnlocks entry (Epic Dawn/War of the Giants[/Round
+        /// 2], gated on Wins_Nonmatch instead - see
+        /// StatsLayout.SyncBattlePackUnlocksFromNonmatchWins) always return
+        /// true.</summary>
         public static bool CanManuallyUnlockShopPack(byte[] save, LotdSaveVersion v, PackFlagKind kind, uint flag)
         {
             var series = CampaignSaveLayout.GetSeries(v);
@@ -499,37 +358,12 @@ namespace YuGiOhSaveEditor.Services
 
         // ── Duelist Challenges derived from Campaign story progress ─────────────
 
-        /// <summary>
-        /// One-directional: bumps a duelist's Challenge from Locked to
-        /// Available once every real Campaign duel (forward AND reverse)
-        /// featuring that character - across every series they appear in via
-        /// CampaignDuelNames.BySeries' OwnerA/OwnerB ids, which share the
-        /// same CharacterId space as DuelistChallengeSlots (confirmed by
-        /// cross-checking all 158 names against OwnerDatabase, 0 mismatches)
-        /// - reads Complete. User-specified rule (2026-07-25): "if all the
-        /// campaign duels and reverse duels involving a character are
-        /// complete, unlock the challenge for that character."
-        ///
-        /// Deliberately one-directional (never re-locks, never downgrades an
-        /// already Available/Failed/Complete challenge back down) - unlike
-        /// SyncShopPacksFromCampaignState/SyncBattlePackUnlocksFromNonmatchWins's
-        /// unlock-AND-relock behavior. Those were both plain binary pack
-        /// flags with no player-progress state layered on top; forcibly
-        /// relocking a Challenge here could erase real recorded progress
-        /// (Failed/Complete) just because an unrelated later Campaign edit
-        /// reset some duel state.
-        ///
-        /// A duelist with zero known Campaign appearances (not in
-        /// CampaignDuelNames at all - many Challenge-only opponents never
-        /// appear as a named Campaign duel's portrait) is left completely
-        /// untouched; there's nothing to derive "all complete" from, and
-        /// treating an empty set as vacuously true would incorrectly
-        /// force-unlock every such challenge immediately.
-        ///
-        /// Call after every Campaign duel-state write (see
-        /// SaveEditorView.DuelStateChanged/BulkSetSeries/BulkSetAll), same
-        /// call sites as SyncShopPacksFromCampaignState.
-        /// </summary>
+        /// <summary>One-directional: bumps a duelist's Challenge from Locked
+        /// to Available once every real Campaign duel (forward and reverse)
+        /// featuring them reads Complete. Never re-locks or downgrades an
+        /// already-unlocked challenge. A duelist with zero known Campaign
+        /// appearances is left untouched. Call after every Campaign
+        /// duel-state write.</summary>
         public static void SyncChallengesFromCampaignState(byte[] save, LotdSaveVersion v)
         {
             var series = CampaignSaveLayout.GetSeries(v);
@@ -546,27 +380,11 @@ namespace YuGiOhSaveEditor.Services
             }
         }
 
-        /// <summary>
-        /// One-directional: unlocks a character's avatar the moment every
-        /// real Campaign duel (forward AND reverse) featuring them reads
-        /// Complete - same rule and same "leave zero-appearance characters
-        /// alone" reasoning as SyncChallengesFromCampaignState above, just
-        /// applied to UnlockedAvatars instead of the Challenges array.
-        /// User-specified (2026-07-25): "if all the campaign duels and
-        /// reverse duels involving a character are complete, then unlock the
-        /// avatar for that character."
-        ///
-        /// Only covers avatar ids 0..LotdSaveFormat.NumAvatarSlots-1 (153)
-        /// out of the full 0-191 CharacterId space DuelistChallengeSlots
-        /// uses - UnlockedAvatars is a fixed 153-slot bitfield (see that
-        /// field's own doc comment: "ids only go up to 152 in chardata.bin"),
-        /// so newer characters past id 152 (much of ZEXAL, all of VRAINS'
-        /// second block) simply have no avatar slot to unlock at all,
-        /// same limitation the existing Avatars tab already has.
-        ///
-        /// Call after every Campaign duel-state write, same call sites as
-        /// SyncShopPacksFromCampaignState/SyncChallengesFromCampaignState.
-        /// </summary>
+        /// <summary>Same rule as SyncChallengesFromCampaignState, applied to
+        /// UnlockedAvatars. Only covers avatar ids 0-152 (UnlockedAvatars is
+        /// a fixed 153-slot bitfield) - characters past id 152 have no
+        /// avatar slot to unlock. Call after every Campaign duel-state
+        /// write.</summary>
         public static void SyncAvatarsFromCampaignState(byte[] save, LotdSaveVersion v)
         {
             var series = CampaignSaveLayout.GetSeries(v);
@@ -581,20 +399,9 @@ namespace YuGiOhSaveEditor.Services
             }
         }
 
-        /// <summary>
-        /// True if it's safe to MANUALLY unlock/complete a character's
-        /// avatar or challenge right now - user-specified failsafe
-        /// (2026-07-25): "if a duelist does not have all his duels
-        /// completed, you can not unlock the avatar [or] the challenge for
-        /// it." A character with zero known Campaign appearances has
-        /// nothing to gate on and is always allowed - same "leave
-        /// untouched" reasoning as SyncChallengesFromCampaignState/
-        /// SyncAvatarsFromCampaignState above (there's no prerequisite to
-        /// violate). This only governs the UNLOCK direction - locking/
-        /// resetting something is never blocked, so callers must only call
-        /// this before writing a state that counts as "unlocked" (anything
-        /// other than Locked for a Challenge, or true for an avatar).
-        /// </summary>
+        /// <summary>True if it's safe to manually unlock/complete a
+        /// character's avatar or challenge right now. Only governs the
+        /// unlock direction - locking/resetting is never blocked.</summary>
         public static bool CanManuallyUnlock(byte[] save, LotdSaveVersion v, byte characterId)
         {
             var series = CampaignSaveLayout.GetSeries(v);
@@ -602,18 +409,10 @@ namespace YuGiOhSaveEditor.Services
             return allComplete;
         }
 
-        /// <summary>Shared by SyncChallengesFromCampaignState/SyncAvatarsFromCampaignState/
-        /// CanManuallyUnlock: for a given characterId, scans every real
-        /// Campaign duel appearance (via CampaignDuelNames.BySeries'
-        /// OwnerA/OwnerB, across every series in <paramref name="series"/>)
-        /// and reports both whether any were found at all (FoundAny) and
-        /// whether every one found currently reads Complete on both the
-        /// forward and reverse duel (AllComplete - defaults true/vacuous
-        /// when FoundAny is false, which is exactly the behavior
-        /// CanManuallyUnlock wants: nothing to gate on = allowed). Callers
-        /// wanting the Sync* "auto-unlock" behavior must additionally check
-        /// FoundAny, since an empty appearance set must never be treated as
-        /// "go ahead and unlock" there.</summary>
+        /// <summary>Scans every real Campaign duel appearance for
+        /// characterId; reports whether any were found (FoundAny) and
+        /// whether all read Complete on both forward and reverse
+        /// (AllComplete, vacuously true when FoundAny is false).</summary>
         private static (bool FoundAny, bool AllComplete) GetCampaignCompletionStatus(byte[] save, LotdSaveVersion v, LotdDuelSeries[] series, byte characterId)
         {
             bool foundAny = false;
@@ -638,25 +437,10 @@ namespace YuGiOhSaveEditor.Services
             return (foundAny, true);
         }
 
-        /// <summary>
-        /// One-directional: unlocks the Duelist Challenges content gate
-        /// (UnlockedContent.DuelistChallenges) the moment any real named
-        /// challenge (DuelistChallengeSlots.Entries) reads anything other
-        /// than Locked. User-specified rule (2026-07-25): "if at least 1
-        /// duelist challenge is unlocked then the gate should be unlocked."
-        /// Only scans the 158 known real slots, not the full 477/700-entry
-        /// raw array (RecalculateChallengeStats scans the full array for its
-        /// own Games_Challenge/Wins_Challenge purposes, but this gate is
-        /// specifically about the player-facing Duelist Challenge list,
-        /// which this app only knows the real names of via that table).
-        /// Never re-locks the gate - same one-directional reasoning as
-        /// SyncChallengesFromCampaignState above.
-        ///
-        /// Call after every Challenge-state write: the per-duelist dropdown,
-        /// the bulk Unlock/Complete/Reset Challenges buttons, and
-        /// SyncChallengesFromCampaignState above (since that can also newly
-        /// unlock a challenge).
-        /// </summary>
+        /// <summary>One-directional: unlocks the Duelist Challenges content
+        /// gate the moment any real named challenge reads anything other
+        /// than Locked. Never re-locks. Call after every Challenge-state
+        /// write.</summary>
         public static void SyncChallengeGateFromChallenges(byte[] save, LotdSaveVersion v)
         {
             int numSlots = LotdSaveFormat.GetNumDeckDataSlots(v);

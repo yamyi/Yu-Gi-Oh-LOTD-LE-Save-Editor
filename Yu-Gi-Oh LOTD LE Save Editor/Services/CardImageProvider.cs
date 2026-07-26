@@ -8,29 +8,26 @@ namespace YuGiOhSaveEditor.Services
     /// <summary>
     /// Downloads and caches card artwork from Card.ImageUrl / SmallImageUrl.
     /// Results are cached in memory for the running session and on disk
-    /// (under %LocalAppData%) so images don't have to be re-downloaded between
-    /// runs. Callers should call this unconditionally, online or offline -
-    /// this class itself decides whether the network is allowed (see
-    /// AppState.IsOfflineMode): an on-disk cache hit is always returned
+    /// (under %LocalAppData%) so images don't have to be re-downloaded
+    /// between runs. Callers should call this unconditionally, online or
+    /// offline - this class itself decides whether the network is allowed
+    /// (see AppState.IsOfflineMode): an on-disk cache hit is always returned
     /// regardless of offline mode, and only a genuine cache miss falls back
-    /// to "return null without downloading" while offline. This way a card
-    /// whose art was already cached during an earlier online session still
-    /// shows up even after switching to Offline Mode - changed 2026-07-23,
-    /// previously offline mode skipped this class entirely at every call
-    /// site, which also hid already-cached art for no reason.
+    /// to "return null without downloading" while offline.
     ///
-    /// Disk caching itself is optional (AppState.DiskCacheEnabled, also added
-    /// 2026-07-23 per user request) - when turned off in Settings, GetImageAsync
-    /// bypasses BOTH the disk cache AND the in-memory session dictionary below,
-    /// so every single request (while online) re-contacts ygoprodeck rather
-    /// than reusing anything, and nothing is written to disk. When it's on,
-    /// AppState.CacheSizeLimitMB (0 = unlimited) caps the on-disk cache's
-    /// total size - once a new download pushes it over that cap, the
-    /// least-recently-used files are deleted first (see TouchCacheHit /
-    /// EnforceCacheLimit) until it's back under.
+    /// Disk caching itself is optional (AppState.DiskCacheEnabled) - when
+    /// turned off in Settings, GetImageAsync bypasses both the disk cache
+    /// and the in-memory session dictionary below, so every request (while
+    /// online) re-contacts ygoprodeck rather than reusing anything, and
+    /// nothing is written to disk. When it's on, AppState.CacheSizeLimitMB
+    /// (0 = unlimited) caps the on-disk cache's total size - once a new
+    /// download pushes it over that cap, the least-recently-used files are
+    /// deleted first (see TouchCacheHit / EnforceCacheLimit) until it's back
+    /// under.
     ///
-    /// Returns BitmapImage (WPF's native imaging type) instead of the WinForms
-    /// build's System.Drawing.Bitmap — bind straight to an Image.Source.
+    /// Returns BitmapImage (WPF's native imaging type) instead of the
+    /// WinForms build's System.Drawing.Bitmap - bind straight to an
+    /// Image.Source.
     /// </summary>
     public static class CardImageProvider
     {
@@ -83,26 +80,15 @@ namespace YuGiOhSaveEditor.Services
         /// entry if it resolved to null (offline miss, download failure,
         /// etc.), so the next call for the same card+size genuinely retries
         /// instead of being stuck with a memoized null for the rest of the
-        /// session. This eviction has to happen out here rather than inside
-        /// FetchAsync itself (which is what the code used to do): FetchAsync
-        /// is the very factory delegate GetOrAdd passes to `cache.GetOrAdd`,
-        /// and GetOrAdd always *runs the factory first and inserts its result
-        /// into the dictionary second*. Several of FetchAsync's failure paths
-        /// (an offline miss, a bad URL) never hit a genuinely-incomplete
-        /// await, so the whole async method actually runs synchronously -
-        /// which means a `cache.TryRemove(cacheKey, ...)` called from inside
-        /// FetchAsync was racing against, and always losing to, GetOrAdd's own
-        /// not-yet-happened insert: it removed a key that wasn't in the
-        /// dictionary yet, a silent no-op, and the null result got permanently
-        /// memoized until the app restarted and cleared the whole static
-        /// dictionary. This was the root cause of a 2026-07-23 bug report:
-        /// previewing a card while offline (thumbnail cached, full-size not)
-        /// then switching back online never re-downloaded the full-size image
-        /// until the app was relaunched. Waiting until after GetOrAdd has
-        /// definitely returned - and using the conditional KeyValuePair
-        /// overload of TryRemove rather than the plain by-key one - avoids
-        /// both the ordering race and evicting a different, newer task a
-        /// concurrent caller may have already replaced this entry with.</summary>
+        /// session. This eviction must happen out here rather than inside
+        /// FetchAsync itself: FetchAsync is the factory delegate passed to
+        /// `cache.GetOrAdd`, and GetOrAdd runs the factory first and inserts
+        /// its result into the dictionary second - removing the key from
+        /// inside FetchAsync would race against (and lose to) that insert.
+        /// Uses the conditional KeyValuePair overload of TryRemove rather
+        /// than the plain by-key one, to avoid evicting a different, newer
+        /// task a concurrent caller may have already replaced this entry
+        /// with.</summary>
         private static async Task<BitmapImage?> AwaitAndEvictOnFailure(string cacheKey, Task<BitmapImage?> task)
         {
             BitmapImage? result = await task;
@@ -112,19 +98,14 @@ namespace YuGiOhSaveEditor.Services
         }
 
         /// <summary>What the preview panels (CardSearchView/DeckEditorView)
-        /// actually call instead of GetImageAsync(card, small: false) directly -
-        /// tries the full-size image first, and if that comes back null
-        /// (most commonly a genuine Offline Mode cache miss, but also covers
-        /// a transient network failure or a card with no full-size URL)
-        /// falls back to whatever small/tile image is already cached instead
-        /// of leaving the preview blank. A stretched-up thumbnail looking
-        /// soft beats no art at all - added 2026-07-23 per user request.
-        /// Only ever costs one extra request beyond what GetImageAsync(card,
-        /// small: false) alone would have made: if the full-size lookup
-        /// failed because we're offline, the small lookup underneath is
-        /// offline too and just checks its own cache; the only case this
-        /// triggers a genuinely new network call is a full-size image that
-        /// errored out for some other reason while online.</summary>
+        /// actually call instead of GetImageAsync(card, small: false)
+        /// directly - tries the full-size image first, and if that comes
+        /// back null (most commonly a genuine Offline Mode cache miss, but
+        /// also covers a transient network failure or a card with no
+        /// full-size URL) falls back to whatever small/tile image is already
+        /// cached instead of leaving the preview blank. Only ever costs one
+        /// extra request beyond what GetImageAsync(card, small: false) alone
+        /// would have made.</summary>
         public static async Task<BitmapImage?> GetPreviewImageAsync(Card card, CancellationToken ct = default)
         {
             var full = await GetImageAsync(card, small: false, ct);
